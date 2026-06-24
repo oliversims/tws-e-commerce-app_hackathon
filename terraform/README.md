@@ -37,7 +37,9 @@ No `backend.json` file — stacks read bucket/region from bootstrap outputs auto
 | Stack | Reads from |
 |-------|------------|
 | All stacks 01–10 | `00_bootstrap` (bucket, region) |
-| `03_eks`, `04_jenkins`, `05_bastion` | `01_vpc`, `02_keys` |
+| `03_eks` | `01_vpc`, `02_keys` |
+| `04_jenkins` | `01_vpc`, `02_keys` |
+| `05_bastion` | `01_vpc`, `02_keys`, **`03_eks`** |
 | `06_ebs-csi-driver`, `08_alb-controller` | `03_eks` |
 | `07_storage-class` | `06_ebs-csi-driver` |
 | `09_argocd`, `10_kube-prometheus-stack` | `07_storage-class` |
@@ -46,17 +48,21 @@ No `backend.json` file — stacks read bucket/region from bootstrap outputs auto
 
 - AWS credentials on your machine (for `terraform apply`)
 - SSH public key at `shared/terra-key.pub`
-- **kubectl** is run from the **bastion host** (not your laptop) — see `05_bastion` outputs after apply
+- **kubectl** runs from the **bastion host** — kubeconfig is configured automatically on boot (apply **`05_bastion` after `03_eks`**)
 - Stacks **06–10** run Helm/Kubernetes via Terraform: run `terraform apply` from the **bastion** (after kubeconfig is set there), or keep `~/.kube/config` on the machine where you run those applies
 
 ### Bastion → EKS workflow
 
 ```powershell
-# 1. From your machine: get SSH command and kubeconfig setup command
+# 1. Apply order: 03_eks first, then 05_bastion
 cd terraform/05_bastion
-terraform output -raw ssh_command
-terraform output -raw setup_kubeconfig_command
+terraform init
+terraform apply
 
-# 2. SSH into bastion, configure AWS credentials (aws configure), then run setup_kubeconfig_command
-# 3. On bastion: kubectl get nodes
+# 2. SSH in (from your machine)
+terraform output -raw ssh_command
+
+# 3. On bastion: wait for first-boot setup, then kubectl works (no aws configure)
+sudo cloud-init status --wait
+kubectl get nodes
 ```

@@ -20,6 +20,18 @@ data "terraform_remote_state" "keys" {
   }
 }
 
+data "terraform_remote_state" "eks" {
+  backend = "s3"
+
+  config = {
+    bucket = local.backend_bucket
+    key    = "03_eks/terraform.tfstate"
+    region = local.backend_region
+  }
+}
+
+data "aws_caller_identity" "current" {}
+
 data "aws_ami" "os_image" {
   owners      = ["099720109477"]
   most_recent = true
