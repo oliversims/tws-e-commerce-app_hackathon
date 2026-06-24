@@ -36,11 +36,21 @@ pipeline {
             }
         }
 
-        // Clone the application source code from GitHub (uses github-credentials for private repos).
+        // Clone from YOUR repo (do not use shared library clone() — it hardcodes lax66).
         stage('Clone Repository') {
             steps {
                 script {
-                    clone("https://github.com/oliversims/tws-e-commerce-app_hackathon.git", "master")
+                    withCredentials([usernamePassword(
+                        credentialsId: 'github-credentials',
+                        usernameVariable: 'GIT_USERNAME',
+                        passwordVariable: 'GIT_PASSWORD'
+                    )]) {
+                        sh '''
+                            git clone -b master \
+                              "https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/oliversims/tws-e-commerce-app_hackathon.git" \
+                              .
+                        '''
+                    }
                 }
             }
         }
@@ -150,8 +160,8 @@ pipeline {
                             else
                                 git add kubernetes/*.yaml
                                 git commit -m "Update image tags to ${env.DOCKER_IMAGE_TAG} [ci skip]"
-                                git remote set-url origin https://\${GIT_USERNAME}:\${GIT_PASSWORD}@github.com/oliversims/tws-e-commerce-app_hackathon.git
-                                git push origin HEAD:${env.GIT_BRANCH}
+                                git remote -v
+                                git push "https://\${GIT_USERNAME}:\${GIT_PASSWORD}@github.com/oliversims/tws-e-commerce-app_hackathon.git" HEAD:${env.GIT_BRANCH}
                             fi
                         """
                     }
