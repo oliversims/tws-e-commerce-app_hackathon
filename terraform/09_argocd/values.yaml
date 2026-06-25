@@ -42,7 +42,7 @@ crds:
 global:
   # -- Default domain used by all components
   ## Used for ingresses, certificates, SSO, notifications, etc.
-  domain: argocd.example.com
+  domain: argocd.simsoliver.com
 
   # -- Runtime class name for all components
   runtimeClassName: ""
@@ -2365,7 +2365,7 @@ server:
       # nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
       # nginx.ingress.kubernetes.io/ssl-passthrough: "true"
       alb.ingress.kubernetes.io/scheme: internet-facing
-      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:876997124628:certificate/b69bb6e7-cbd1-490b-b765-27574080f48c
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/3fa96c7e-2481-470b-9c26-1cd45eb8cb6c
       alb.ingress.kubernetes.io/group.name: easyshop-app-lb
       alb.ingress.kubernetes.io/target-type: ip
       alb.ingress.kubernetes.io/backend-protocol: HTTP
@@ -2377,7 +2377,7 @@ server:
 
     # -- Argo CD server hostname
     # @default -- `""` (defaults to global.domain)
-    hostname: argocd.devopsdock.site
+    hostname: argocd.simsoliver.com
 
     # -- The path to Argo CD server
     path: /

@@ -98,6 +98,6 @@ terraform/terraform.tfstate.backup
 terra-key.pub
 terra-key
 terraform/0*/**/.terraform/*
-terraform/bootstrap/terraform.tfstate
-terraform/bootstrap/terraform.tfstate.backup
+terraform/00_state/terraform.tfstate
+terraform/00_state/terraform.tfstate.backup
 

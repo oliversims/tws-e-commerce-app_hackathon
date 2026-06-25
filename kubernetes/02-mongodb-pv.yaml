@@ -1,3 +1,7 @@
+# 02-mongodb-pv.yaml
+# Cluster-scoped PersistentVolume for MongoDB data (5 Gi, ReadWriteOnce).
+# Uses hostPath for local/dev-style storage; reclaim policy Retain keeps data after PVC delete.
+
 apiVersion: v1
 kind: PersistentVolume
 metadata:

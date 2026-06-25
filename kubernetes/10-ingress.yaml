@@ -1,3 +1,7 @@
+# 10-ingress.yaml
+# AWS ALB Ingress — HTTPS for easyshop.devopsdock.site, targets easyshop-service:80.
+# Requires AWS Load Balancer Controller (terraform stack 07) and ACM certificate.
+
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -24,4 +28,3 @@ spec:
             name: easyshop-service
             port:
               number: 80
-

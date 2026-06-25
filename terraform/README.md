@@ -1,68 +1,68 @@
 # Terraform — apply order
 
-Apply folders in number order: `00_bootstrap` → `01_vpc` → … → `10_kube-prometheus-stack`.
+Apply stacks **in folder number order**. Run from your **PC** unless noted.
 
-## Commands
+## Required now (core platform + Argo CD)
 
-**Bootstrap** (creates the S3 bucket):
+| # | Stack | Where | Notes |
+|---|--------|--------|--------|
+| 00 | `00_state` | PC | S3 state bucket — run once |
+| 01 | `01_vpc` | PC | VPC, subnets, NAT |
+| 02 | `02_route53_acm` | PC | `simsoliver.com` hosted zone + ACM wildcard cert |
+| 03 | `03_keys` | PC | SSH key for EC2 |
+| 04 | `04_eks` | PC | EKS cluster (private API) |
+| 05 | `05_jenkins` | PC | Jenkins CI server |
+| 06 | `06_bastion` | PC | Bastion — apply **after** `04_eks` |
+| 07 | `07_alb-controller` | **Bastion** | AWS Load Balancer Controller |
+| 08 | `08_external-dns` | **Bastion** | Auto Route 53 records from Ingress hostnames |
+| 09 | `09_argocd` | **Bastion** | Argo CD — apply **after** `07` + `08` |
+
+## Optional later
+
+| # | Stack | When you need it |
+|---|--------|------------------|
+| 10 | `10_kube-prometheus-stack` | Monitoring (Grafana / Prometheus) |
+| 11 | `11_ebs-csi-driver` | Dynamic EBS volumes (PVCs) |
+| 12 | `12_storage-class` | Default StorageClass — after `11_ebs-csi-driver`; for easyshop MongoDB PVCs |
+
+## Bastion workflow (stacks 07–12)
 
 ```powershell
-cd terraform/00_bootstrap
-terraform init
-terraform apply
+cd terraform/06_bastion
+terraform output -raw ssh_command
+
+# on bastion:
+sudo cloud-init status --wait
+kubectl get nodes
+cd ~/tws-e-commerce-app_hackathon/terraform/07_alb-controller && terraform init && terraform apply
+cd ~/tws-e-commerce-app_hackathon/terraform/08_external-dns && terraform init && terraform apply
+cd ~/tws-e-commerce-app_hackathon/terraform/09_argocd && terraform init && terraform apply
 ```
-
-After bootstrap, set the bucket name in each stack's `providers.tf` (from `terraform output state_bucket_name`).
-
-**Every other stack:**
-
-```powershell
-cd terraform/01_vpc
-terraform init
-terraform apply
-```
-
-## How stacks get config
-
-| What | Where it comes from |
-|------|-------------------|
-| This stack's state storage | `providers.tf` → `backend "s3"` |
-| Bucket + region for reading other stacks | `bootstrap.tf` → `00_bootstrap` local state |
-| VPC, EKS, keys, etc. | `data.tf` → `terraform_remote_state` |
-
-No `backend.json` file — stacks read bucket/region from bootstrap outputs automatically.
 
 ## Stack dependencies
 
 | Stack | Reads from |
 |-------|------------|
-| All stacks 01–10 | `00_bootstrap` (bucket, region) |
-| `03_eks` | `01_vpc`, `02_keys` |
-| `04_jenkins` | `01_vpc`, `02_keys` |
-| `05_bastion` | `01_vpc`, `02_keys`, **`03_eks`** |
-| `06_ebs-csi-driver`, `08_alb-controller` | `03_eks` |
-| `07_storage-class` | `06_ebs-csi-driver` |
-| `09_argocd`, `10_kube-prometheus-stack` | `07_storage-class` |
+| All stacks | `00_state` (bucket, region) |
+| `04_eks` | `01_vpc`, `03_keys` |
+| `05_jenkins` | `01_vpc`, `03_keys` |
+| `06_bastion` | `01_vpc`, `03_keys`, `04_eks` |
+| `07_alb-controller`, `11_ebs-csi-driver` | `04_eks` |
+| `08_external-dns` | `04_eks`, `02_route53_acm` |
+| `12_storage-class` | `11_ebs-csi-driver` |
+
+## Ingress hostnames (external-dns creates DNS for these)
+
+Set hosts in each app's Ingress; external-dns syncs them to Route 53:
+
+| App | File |
+|-----|------|
+| Argo CD | `09_argocd/values.yaml` — `server.ingress.hostname` |
+| Grafana / Prometheus | `10_kube-prometheus-stack/values.yaml` |
+| Easyshop | `kubernetes/10-ingress.yaml` |
 
 ## Prerequisites
 
-- AWS credentials on your machine (for `terraform apply`)
+- AWS credentials on your PC
 - SSH public key at `shared/terra-key.pub`
-- **kubectl** runs from the **bastion host** — kubeconfig is configured automatically on boot (apply **`05_bastion` after `03_eks`**)
-- Stacks **06–10** run Helm/Kubernetes via Terraform: run `terraform apply` from the **bastion** (after kubeconfig is set there), or keep `~/.kube/config` on the machine where you run those applies
-
-### Bastion → EKS workflow
-
-```powershell
-# 1. Apply order: 03_eks first, then 05_bastion
-cd terraform/05_bastion
-terraform init
-terraform apply
-
-# 2. SSH in (from your machine)
-terraform output -raw ssh_command
-
-# 3. On bastion: wait for first-boot setup, then kubectl works (no aws configure)
-sudo cloud-init status --wait
-kubectl get nodes
-```
+- Stacks **07–12**: run from **bastion**

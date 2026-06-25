@@ -94,9 +94,42 @@ sudo ./aws/install
 > [!NOTE] 
 > Make sure the IAM user you're using has the necessary permissions. You’ll need an AWS IAM Role with programmatic access enabled, along with the Access Key and Secret Key.
 
-## Getting Started
+## Getting Started — Infrastructure (Terraform)
 
-> Follow the steps below to get your infrastructure up and running using Terraform:<br/>
+Apply stacks in order from [`terraform/README.md`](terraform/README.md). Summary:
+
+**On your PC (in order):** `00_state` → `01_vpc` → `02_route53_acm` → `03_keys` → `04_eks` → `05_jenkins` → `06_bastion`
+
+**On bastion (after SSH in):** `07_alb-controller` → `08_external-dns` → `09_argocd`
+
+**Optional later:** `10_kube-prometheus-stack` (monitoring), `11_ebs-csi-driver` + `12_storage-class` (PVCs for easyshop MongoDB)
+
+```powershell
+git clone https://github.com/oliversims/tws-e-commerce-app_hackathon.git
+cd tws-e-commerce-app_hackathon/terraform/00_state
+terraform init && terraform apply
+# then continue each numbered folder — see terraform/README.md
+```
+
+**SSH key:** place public key at `terraform/shared/terra-key.pub` before applying `03_keys`.
+
+**Bastion → EKS:**
+
+```powershell
+cd terraform/06_bastion
+terraform output -raw ssh_command
+# on bastion:
+sudo cloud-init status --wait
+kubectl get nodes
+```
+
+**Delegate DNS:** after `02_route53_acm`, point `simsoliver.com` NS at Route 53 (domain registered in AWS). Wait for ACM cert **ISSUED** before using HTTPS ingress.
+
+---
+
+## Getting Started — Legacy single-folder notes
+
+> The steps below are from the original tutorial. Use the Terraform stack order above instead.
 
 1. **Clone the Repository:**
 First, clone this repo to your local machine:<br/>

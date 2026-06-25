@@ -23,6 +23,4 @@ module "argocd" {
   values = [templatefile("${path.module}/values.yaml", {
     serverReplicas = 1
   })]
-
-  depends_on = [data.terraform_remote_state.storage_class]
 }

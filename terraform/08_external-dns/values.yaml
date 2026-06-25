@@ -1,0 +1,28 @@
+# external-dns — syncs Ingress hostnames to Route 53 (simsoliver.com zone)
+
+provider:
+  name: aws
+
+env:
+  - name: AWS_DEFAULT_REGION
+    value: ${region}
+
+domainFilters:
+  - ${domain_name}
+
+policy: sync
+registry: txt
+txtOwnerId: ${txt_owner_id}
+
+serviceAccount:
+  create: true
+  name: external-dns
+  annotations:
+    eks.amazonaws.com/role-arn: ${role_arn}
+
+sources:
+  - ingress
+
+extraArgs:
+  - --aws-zone-type=public
+  - --zone-id-filter=${hosted_zone_id}

@@ -1,3 +1,6 @@
+# 03-mongodb-pvc.yaml
+# Binds MongoDB storage in the easyshop namespace to the PV (mongodb-pv).
+
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

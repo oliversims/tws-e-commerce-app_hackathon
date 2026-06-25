@@ -54,18 +54,17 @@ chown -R ubuntu:ubuntu /home/ubuntu/.kube
 echo 'export KUBECONFIG=/home/ubuntu/.kube/config' > /etc/profile.d/kubeconfig.sh
 chmod 644 /etc/profile.d/kubeconfig.sh
 
-# 6. Copy terraform stacks 06-10 from GitHub (only these folders, not the full repo)
-git clone --depth 1 --filter=blob:none --sparse \
-  https://github.com/oliversims/tws-e-commerce-app_hackathon.git /home/ubuntu/repo
-git -C /home/ubuntu/repo sparse-checkout set \
-  terraform/modules \
-  terraform/06_ebs-csi-driver \
-  terraform/07_storage-class \
-  terraform/08_alb-controller \
-  terraform/09_argocd \
-  terraform/10_kube-prometheus-stack
-mv /home/ubuntu/repo/terraform /home/ubuntu/terraform
-rm -rf /home/ubuntu/repo
-chown -R ubuntu:ubuntu /home/ubuntu/terraform
+# 6. Clone entire project from GitHub
+git clone --depth 1 \
+  https://github.com/oliversims/tws-e-commerce-app_hackathon.git \
+  /home/ubuntu/tws-e-commerce-app_hackathon
+
+# 00_state local state is not in GitHub — download from S3
+mkdir -p /home/ubuntu/tws-e-commerce-app_hackathon/terraform/00_state
+until aws s3 cp "s3://${state_bucket}/${state_key}" \
+  /home/ubuntu/tws-e-commerce-app_hackathon/terraform/00_state/terraform.tfstate --region ${region}; do
+  sleep 5
+done
+chown -R ubuntu:ubuntu /home/ubuntu/tws-e-commerce-app_hackathon
 
 touch /var/lib/bastion-kubectl-ready

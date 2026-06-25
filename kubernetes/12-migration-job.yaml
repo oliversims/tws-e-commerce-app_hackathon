@@ -1,3 +1,7 @@
+# 12-migration-job.yaml
+# One-off Job to run DB migrations against mongodb-service before or after app deploy.
+# restartPolicy OnFailure retries the pod if migration exits with an error.
+
 apiVersion: batch/v1
 kind: Job
 metadata:

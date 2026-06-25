@@ -1,3 +1,7 @@
+# 04-configmap.yaml
+# Non-sensitive app configuration injected into easyshop pods via envFrom.
+# Secrets (JWT, NEXTAUTH) should live in 05-secrets.yaml — values here are overridden by Secret refs in the Deployment.
+
 apiVersion: v1
 kind: ConfigMap
 metadata:

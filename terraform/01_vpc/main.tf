@@ -1,5 +1,5 @@
 # 01_vpc — main.tf
-# Creates the VPC and all core networking. Apply after 00_bootstrap.
+# Creates the VPC and all core networking. Apply after 00_state.
 
 # Builds VPC, subnets, internet gateway, NAT gateway, and route tables.
 # Public subnets: Jenkins, Bastion. Private subnets: EKS nodes.

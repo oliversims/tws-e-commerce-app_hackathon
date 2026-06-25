@@ -1,3 +1,6 @@
+# 09-easyshop-service.yaml
+# Exposes easyshop pods on port 80 (maps to container 3000); NodePort 30000 for direct node access.
+
 apiVersion: v1
 kind: Service
 metadata:

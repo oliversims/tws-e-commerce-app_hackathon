@@ -1,3 +1,6 @@
+# 11-hpa.yaml
+# Scales easyshop Deployment between 2–5 replicas when average CPU exceeds 70%.
+
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:

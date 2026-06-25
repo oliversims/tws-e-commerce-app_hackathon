@@ -7,7 +7,7 @@ variable "role_name" {
   type        = string
 }
 
-# EKS OIDC issuer host without https:// — from stack 03_eks output.
+# EKS OIDC issuer host without https:// — from stack 04_eks output.
 variable "oidc_provider_url" {
   description = "EKS OIDC provider URL without the https:// prefix"
   type        = string

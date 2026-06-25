@@ -1,8 +1,8 @@
 # 01_vpc — locals.tf
 
 locals {
-  backend_bucket = data.terraform_remote_state.bootstrap.outputs.state_bucket_name
-  backend_region = data.terraform_remote_state.bootstrap.outputs.state_bucket_region
+  backend_bucket = data.terraform_remote_state.state.outputs.state_bucket_name
+  backend_region = data.terraform_remote_state.state.outputs.state_bucket_region
   region         = local.backend_region
   name            = "tws-eks-cluster"
   vpc_cidr        = "10.0.0.0/16"

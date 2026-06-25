@@ -1,0 +1,22 @@
+# 07_alb-controller — verification commands (run on bastion)
+
+# Terraform apply finished
+cd ~/tws-e-commerce-app_hackathon/terraform/07_alb-controller
+terraform show
+
+# IAM policy and role (AWS)
+aws iam get-policy --policy-arn arn:aws:iam::$(aws sts get-caller-identity --query Account --output text):policy/AWSLoadBalancerControllerIAMPolicy
+aws iam get-role --role-name AmazonEKSLoadBalancerControllerRole
+aws iam list-attached-role-policies --role-name AmazonEKSLoadBalancerControllerRole
+
+# Helm release
+helm list -n kube-system | grep load-balancer
+
+# Controller pod running
+kubectl get pods -n kube-system -l app.kubernetes.io/name=aws-load-balancer-controller
+
+# IRSA on service account
+kubectl get sa aws-load-balancer-controller -n kube-system -o jsonpath='{.metadata.annotations.eks\.amazonaws\.com/role-arn}'; echo
+
+# After you create an Ingress later — ALB appears in AWS
+# aws elbv2 describe-load-balancers --query 'LoadBalancers[].LoadBalancerName'

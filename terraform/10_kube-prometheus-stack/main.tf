@@ -21,6 +21,4 @@ module "kube_prometheus_stack" {
   }
 
   values = [file("${path.module}/values.yaml")]
-
-  depends_on = [data.terraform_remote_state.storage_class]
 }

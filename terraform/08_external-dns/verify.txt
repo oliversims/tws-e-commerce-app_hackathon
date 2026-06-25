@@ -1,0 +1,5 @@
+# 08_external-dns — check deployment (run on bastion)
+
+kubectl get deploy -n kube-system external-dns
+kubectl get pods -n kube-system -l app.kubernetes.io/name=external-dns
+kubectl rollout status deploy/external-dns -n kube-system

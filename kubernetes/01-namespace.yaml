@@ -1,3 +1,7 @@
+# 01-namespace.yaml
+# Creates the easyshop namespace — all other manifests target this namespace.
+# Apply first before any namespaced resources.
+
 apiVersion: v1
 kind: Namespace
 metadata:

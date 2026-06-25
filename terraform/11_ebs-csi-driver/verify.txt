@@ -1,0 +1,18 @@
+# 11_ebs-csi-driver — verification commands (run on bastion)
+
+# Terraform apply finished
+cd ~/tws-e-commerce-app_hackathon/terraform/11_ebs-csi-driver
+terraform show
+
+# IAM role (AWS)
+aws iam get-role --role-name AmazonEKS_EBS_CSI_DriverRole
+aws iam list-attached-role-policies --role-name AmazonEKS_EBS_CSI_DriverRole
+
+# Helm release
+helm list -n kube-system | grep ebs
+
+# Pods (expect controller 5/5 and node 3/3 Running)
+kubectl get pods -n kube-system | grep ebs
+
+# IRSA on service account
+kubectl get sa ebs-csi-controller-sa -n kube-system -o jsonpath='{.metadata.annotations.eks\.amazonaws\.com/role-arn}'; echo
