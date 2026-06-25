@@ -1,21 +1,9 @@
-# 09_argocd — verification commands (run on bastion)
+# 09_argocd — check deployment (run on bastion)
 
-# Terraform apply finished
-cd ~/tws-e-commerce-app_hackathon/terraform/09_argocd
-terraform show
-
-# Helm release
-helm list -n argocd
-
-# Namespace and pods (all Running)
-kubectl get ns argocd
+kubectl get deploy -n argocd
 kubectl get pods -n argocd
+kubectl rollout status deploy/argocd-server -n argocd
 
-# Argo CD server service
-kubectl get svc -n argocd
-
-# Get initial admin password (if using default install)
+# UI: https://argocd.simsoliver.com
+# Username: admin
 kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d; echo
-
-# Port-forward to open UI locally (run from bastion or with SSH tunnel)
-# kubectl port-forward svc/argocd-server -n argocd 8080:443

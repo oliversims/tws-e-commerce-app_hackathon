@@ -1,5 +1,5 @@
 # 03-mongodb-pvc.yaml
-# Binds MongoDB storage in the easyshop namespace to the PV (mongodb-pv).
+# Dynamic EBS volume — requires terraform stacks 11_ebs-csi-driver + 12_storage-class.
 
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -9,6 +9,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: ebs-storage-class
   resources:
     requests:
       storage: 5Gi

@@ -1,6 +1,6 @@
 # 10-ingress.yaml
-# AWS ALB Ingress — HTTPS for easyshop.devopsdock.site, targets easyshop-service:80.
-# Requires AWS Load Balancer Controller (terraform stack 07) and ACM certificate.
+# AWS ALB Ingress — HTTPS for easyshop.simsoliver.com, targets easyshop-service:80.
+# Requires AWS Load Balancer Controller (terraform stack 07) and external-dns (08).
 
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -10,15 +10,16 @@ metadata:
   annotations:
     alb.ingress.kubernetes.io/group.name: easyshop-app-lb
     alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:876997124628:certificate/3fcfd586-3638-4997-9073-95d43d155430
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/3fa96c7e-2481-470b-9c26-1cd45eb8cb6c
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/backend-protocol: HTTP
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
     alb.ingress.kubernetes.io/ssl-redirect: '443'
     kubernetes.io/ingress.class: alb
 spec:
+  ingressClassName: alb
   rules:
-  - host: easyshop.devopsdock.site
+  - host: easyshop.simsoliver.com
     http:
       paths:
       - path: /
