@@ -1,4 +1,4 @@
-# 03-mongodb-pvc.yaml
+# 02-mongodb-pvc.yaml
 # Dynamic EBS volume — requires terraform stacks 11_ebs-csi-driver + 12_storage-class.
 
 apiVersion: v1

@@ -1,4 +1,4 @@
-# 10-ingress.yaml
+# 09-ingress.yaml
 # AWS ALB Ingress — HTTPS for easyshop.simsoliver.com, targets easyshop-service:80.
 # Requires AWS Load Balancer Controller (terraform stack 07) and external-dns (08).
 

@@ -1,4 +1,4 @@
-# 07-mongodb-statefulset.yaml
+# 06-mongodb-statefulset.yaml
 # Single-replica MongoDB with persistent storage via mongodb-pvc mounted at /data/db.
 
 apiVersion: apps/v1

@@ -1,6 +1,6 @@
-# 04-configmap.yaml
+# 03-configmap.yaml
 # Non-sensitive app configuration injected into easyshop pods via envFrom.
-# JWT and NEXTAUTH secrets live in 05-secrets.yaml.
+# JWT and NEXTAUTH secrets live in 04-secrets.yaml.
 
 apiVersion: v1
 kind: ConfigMap

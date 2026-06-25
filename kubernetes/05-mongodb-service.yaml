@@ -1,4 +1,4 @@
-# 06-mongodb-service.yaml
+# 05-mongodb-service.yaml
 # Cluster-internal DNS name mongodb-service:27017 — used by the app and migration job.
 
 apiVersion: v1

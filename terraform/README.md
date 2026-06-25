@@ -59,7 +59,7 @@ Set hosts in each app's Ingress; external-dns syncs them to Route 53:
 |-----|------|
 | Argo CD | `09_argocd/values.yaml` — `server.ingress.hostname` |
 | Grafana / Prometheus | `10_kube-prometheus-stack/values.yaml` |
-| Easyshop | `kubernetes/10-ingress.yaml` |
+| Easyshop | `kubernetes/09-ingress.yaml` |
 
 ## Prerequisites
 

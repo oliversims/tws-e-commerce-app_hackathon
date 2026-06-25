@@ -1,4 +1,4 @@
-# 08-easyshop-deployment.yaml
+# 07-easyshop-deployment.yaml
 # Next.js easyshop app — 2 replicas, env from ConfigMap + Secret, HTTP health probes on port 3000.
 
 apiVersion: apps/v1
