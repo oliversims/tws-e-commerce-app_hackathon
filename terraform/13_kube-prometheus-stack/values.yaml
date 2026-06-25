@@ -537,17 +537,9 @@ alertmanager:
       group_wait: 30s
       group_interval: 5m
       repeat_interval: 12h
-      receiver: 'slack-notification'
-      routes:
-      - receiver: 'slack-notification'
-        matchers:
-          - severity = "critical"
+      receiver: 'null'
     receivers:
-    - name: 'slack-notification'
-      slack_configs:
-        - api_url: '' # Set via secret — do not commit Slack webhook URLs
-          channel: '#alerts'
-          send_resolved: true
+    - name: 'null'
     templates:
     - '/etc/alertmanager/config/*.tmpl'
 
