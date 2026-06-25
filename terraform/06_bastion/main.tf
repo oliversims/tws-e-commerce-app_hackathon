@@ -119,7 +119,9 @@ resource "aws_iam_role_policy" "bastion_terraform_stacks" {
         Resource = [
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/AmazonEKS_EBS_CSI_DriverRole",
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/AmazonEKSLoadBalancerControllerRole",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/AmazonEKSExternalDNSRole",
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/AWSLoadBalancerControllerIAMPolicy",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/ExternalDNSPolicy",
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/*",
         ]
       },
