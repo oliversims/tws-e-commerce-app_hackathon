@@ -1,0 +1,3 @@
+# metrics-server — required on EKS for HPA and kubectl top
+args:
+  - --kubelet-insecure-tls

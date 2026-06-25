@@ -1,0 +1,9 @@
+# 13_metrics-server — check deployment (run on bastion)
+
+kubectl get deploy -n kube-system metrics-server
+kubectl get pods -n kube-system -l app.kubernetes.io/name=metrics-server
+kubectl rollout status deploy/metrics-server -n kube-system
+
+# Metrics API (required for kubernetes/10-hpa.yaml)
+kubectl top nodes
+kubectl top pods -n easyshop

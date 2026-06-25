@@ -15,17 +15,18 @@ Apply stacks **in folder number order**. Run from your **PC** unless noted.
 | 06 | `06_bastion` | PC | Bastion — apply **after** `04_eks` |
 | 07 | `07_alb-controller` | **Bastion** | AWS Load Balancer Controller |
 | 08 | `08_external-dns` | **Bastion** | Auto Route 53 records from Ingress hostnames |
+| 13 | `13_metrics-server` | **Bastion** | Metrics API for HPA + `kubectl top` — **before** easyshop HPA |
 | 09 | `09_argocd` | **Bastion** | Argo CD — apply **after** `07` + `08` |
 
 ## Optional later
 
 | # | Stack | When you need it |
 |---|--------|------------------|
-| 10 | `10_kube-prometheus-stack` | Monitoring (Grafana / Prometheus) |
-| 11 | `11_ebs-csi-driver` | Dynamic EBS volumes (PVCs) |
-| 12 | `12_storage-class` | Default StorageClass — after `11_ebs-csi-driver`; for easyshop MongoDB PVCs |
+| 10 | `10_ebs-csi-driver` | Dynamic EBS volumes (MongoDB PVC) |
+| 11 | `11_storage-class` | Default StorageClass — after `10_ebs-csi-driver` |
+| 12 | `12_kube-prometheus-stack` | Monitoring (Grafana / Prometheus) |
 
-## Bastion workflow (stacks 07–12)
+## Bastion workflow (stacks 07–13)
 
 ```powershell
 cd terraform/06_bastion
@@ -36,7 +37,12 @@ sudo cloud-init status --wait
 kubectl get nodes
 cd ~/tws-e-commerce-app_hackathon/terraform/07_alb-controller && terraform init && terraform apply
 cd ~/tws-e-commerce-app_hackathon/terraform/08_external-dns && terraform init && terraform apply
+cd ~/tws-e-commerce-app_hackathon/terraform/13_metrics-server && terraform init && terraform apply
+cd ~/tws-e-commerce-app_hackathon/terraform/10_ebs-csi-driver && terraform init && terraform apply
+cd ~/tws-e-commerce-app_hackathon/terraform/11_storage-class && terraform init && terraform apply
 cd ~/tws-e-commerce-app_hackathon/terraform/09_argocd && terraform init && terraform apply
+# optional:
+cd ~/tws-e-commerce-app_hackathon/terraform/12_kube-prometheus-stack && terraform init && terraform apply
 ```
 
 ## Stack dependencies
@@ -47,9 +53,9 @@ cd ~/tws-e-commerce-app_hackathon/terraform/09_argocd && terraform init && terra
 | `04_eks` | `01_vpc`, `03_keys` |
 | `05_jenkins` | `01_vpc`, `03_keys` |
 | `06_bastion` | `01_vpc`, `03_keys`, `04_eks` |
-| `07_alb-controller`, `11_ebs-csi-driver` | `04_eks` |
+| `07_alb-controller`, `10_ebs-csi-driver`, `13_metrics-server` | `04_eks` |
 | `08_external-dns` | `04_eks`, `02_route53_acm` |
-| `12_storage-class` | `11_ebs-csi-driver` |
+| `11_storage-class` | `10_ebs-csi-driver` |
 
 ## Ingress hostnames (external-dns creates DNS for these)
 
@@ -58,7 +64,7 @@ Set hosts in each app's Ingress; external-dns syncs them to Route 53:
 | App | File |
 |-----|------|
 | Argo CD | `09_argocd/values.yaml` — `server.ingress.hostname` |
-| Grafana / Prometheus | `10_kube-prometheus-stack/values.yaml` |
+| Grafana / Prometheus | `12_kube-prometheus-stack/values.yaml` |
 | Easyshop | `kubernetes/09-ingress.yaml` |
 
 ## Prerequisites

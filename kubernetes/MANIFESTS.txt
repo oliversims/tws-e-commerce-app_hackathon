@@ -1,0 +1,140 @@
+# kubernetes/ — manifest guide
+#
+# Files are numbered in the order they should be applied (01 first, 11 last).
+# Argo CD syncs the whole folder; numbering helps you understand dependencies.
+#
+# Prerequisites (not in this folder — applied via Terraform on the bastion):
+#   - 07_alb-controller   AWS Load Balancer Controller (creates ALBs from Ingress)
+#   - 08_external-dns     Creates Route 53 DNS records from Ingress hostnames
+#   - 13_metrics-server   Metrics API for HPA (kubernetes/10-hpa.yaml) and kubectl top
+#   - 10_ebs-csi-driver   EBS volume driver for persistent storage
+#   - 11_storage-class    StorageClass "ebs-storage-class" used by MongoDB PVC
+#
+# Public URL after deploy: https://easyshop.simsoliver.com
+
+
+01-namespace.yaml
+-----------------
+Kind: Namespace
+Role: Creates the "easyshop" namespace — a logical boundary for all app resources.
+      Everything else in this folder runs inside this namespace.
+Apply: First.
+
+
+02-mongodb-pvc.yaml
+-------------------
+Kind: PersistentVolumeClaim (PVC)
+Role: Requests a 5 GiB EBS disk for MongoDB data.
+      Binds to the StorageClass "ebs-storage-class" (from terraform 11_storage-class).
+      Data survives pod restarts; stored on AWS EBS, not inside the container.
+Apply: Before MongoDB StatefulSet (06).
+
+
+03-configmap.yaml
+-----------------
+Kind: ConfigMap
+Role: Non-sensitive environment variables for the easyshop app:
+      - MONGODB_URI        connection string to mongodb-service
+      - NODE_ENV           production mode
+      - NEXT_PUBLIC_API_URL  public API URL (browser-facing)
+      - NEXTAUTH_URL       auth callback base URL
+      Injected into easyshop pods via envFrom in 07-easyshop-deployment.yaml.
+
+
+04-secrets.yaml
+---------------
+Kind: Secret (Opaque)
+Role: Sensitive credentials not stored in Git in plain text in production ideally:
+      - JWT_SECRET         signs JWT tokens for API auth
+      - NEXTAUTH_SECRET    encrypts NextAuth session cookies
+      The Deployment (07) explicitly loads these from here, not from the ConfigMap.
+
+
+05-mongodb-service.yaml
+-----------------------
+Kind: Service (ClusterIP — internal only)
+Role: Stable DNS name "mongodb-service" on port 27017 inside the cluster.
+      The easyshop app and migration job connect to mongodb-service:27017.
+      Routes traffic to pods labeled app=mongodb (from 06).
+
+
+06-mongodb-statefulset.yaml
+---------------------------
+Kind: StatefulSet
+Role: Runs one MongoDB pod (mongo:latest) with persistent storage.
+      Mounts the PVC from 02 at /data/db so database files are kept on disk.
+      Works with 05-mongodb-service for a stable network identity.
+
+
+07-easyshop-deployment.yaml
+---------------------------
+Kind: Deployment
+Role: Runs the main Next.js easyshop application (2 replicas by default).
+      - Image: simsoliver/easyshop-app:6 (from Docker Hub)
+      - Port 3000 inside the container
+      - Loads env from ConfigMap (03) and Secret (04)
+      - startup / readiness / liveness probes on HTTP /
+      This is the core web app users interact with.
+
+
+08-easyshop-service.yaml
+------------------------
+Kind: Service (NodePort)
+Role: Exposes easyshop pods inside the cluster on port 80 → container 3000.
+      Also exposes nodePort 30000 for optional direct node access (debugging).
+      The Ingress (09) sends public traffic to easyshop-service:80.
+
+
+09-ingress.yaml
+---------------
+Kind: Ingress
+Role: Public HTTPS entry point for the app at easyshop.simsoliver.com.
+      - Uses AWS ALB (via ingress class "alb" and annotations)
+      - ACM certificate for TLS
+      - Shares ALB group "easyshop-app-lb" with Argo CD and other apps
+      - external-dns creates the Route 53 A/CNAME record automatically
+      Routes internet traffic → easyshop-service:80 → easyshop pods:3000.
+
+
+10-hpa.yaml
+-----------
+Kind: HorizontalPodAutoscaler (HPA)
+Role: Auto-scales the easyshop Deployment based on CPU usage.
+      - Minimum 2 replicas, maximum 5
+      - Scales up when average CPU across pods exceeds 70%
+      Optional for production load; not required for the app to start.
+
+
+11-migration-job.yaml
+---------------------
+Kind: Job (batch)
+Role: One-off task that runs database migrations (simsoliver/easyshop-migration:6).
+      Connects to mongodb-service and applies schema/seed changes.
+      Should run after MongoDB (06) is up and before or alongside the app (07).
+      restartPolicy: OnFailure — retries if the migration container exits with an error.
+      Note: Re-syncing in Argo CD may re-run this job if the Job resource is replaced.
+
+
+# How it fits together
+#
+#   Internet
+#      │
+#      ▼
+#   09-ingress (ALB + HTTPS)
+#      │
+#      ▼
+#   08-easyshop-service :80
+#      │
+#      ▼
+#   07-easyshop-deployment (Next.js × 2+)  ◄── 10-hpa scales replicas
+#      │                    │
+#      │                    └── reads 03-configmap + 04-secrets
+#      │
+#      └── connects to ──► 05-mongodb-service :27017
+#                                │
+#                                ▼
+#                          06-mongodb-statefulset
+#                                │
+#                                └── 02-mongodb-pvc (EBS disk)
+#
+#   11-migration-job ──► 05-mongodb-service (schema setup, run once per deploy)
