@@ -1,4 +1,4 @@
-# 12_kube-prometheus-stack — check deployment (run on bastion)
+# 13_kube-prometheus-stack — check deployment (run on bastion)
 
 kubectl get pods -n monitoring
 kubectl rollout status deploy/my-kube-prometheus-stack-grafana -n monitoring

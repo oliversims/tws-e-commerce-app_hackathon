@@ -6,7 +6,7 @@
 # Prerequisites (not in this folder — applied via Terraform on the bastion):
 #   - 07_alb-controller   AWS Load Balancer Controller (creates ALBs from Ingress)
 #   - 08_external-dns     Creates Route 53 DNS records from Ingress hostnames
-#   - 13_metrics-server   Metrics API for HPA (kubernetes/10-hpa.yaml) and kubectl top
+#   - 12_metrics-server   Metrics API for HPA (kubernetes/10-hpa.yaml) and kubectl top
 #   - 10_ebs-csi-driver   EBS volume driver for persistent storage
 #   - 11_storage-class    StorageClass "ebs-storage-class" used by MongoDB PVC
 #

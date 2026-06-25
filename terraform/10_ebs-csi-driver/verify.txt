@@ -1,7 +1,7 @@
-# 11_ebs-csi-driver — verification commands (run on bastion)
+# 10_ebs-csi-driver — verification commands (run on bastion)
 
 # Terraform apply finished
-cd ~/tws-e-commerce-app_hackathon/terraform/11_ebs-csi-driver
+cd ~/tws-e-commerce-app_hackathon/terraform/10_ebs-csi-driver
 terraform show
 
 # IAM role (AWS)

@@ -1,7 +1,7 @@
-# 12_storage-class — verification commands (run on bastion)
+# 11_storage-class — verification commands (run on bastion)
 
 # Terraform apply finished
-cd ~/tws-e-commerce-app_hackathon/terraform/12_storage-class
+cd ~/tws-e-commerce-app_hackathon/terraform/11_storage-class
 terraform show
 
 # StorageClass exists and is default
