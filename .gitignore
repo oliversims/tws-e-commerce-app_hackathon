@@ -101,3 +101,7 @@ terraform/0*/**/.terraform/*
 terraform/00_state/terraform.tfstate
 terraform/00_state/terraform.tfstate.backup
 
+# Terraform secrets (Slack webhooks, etc.)
+**/terraform.tfvars
+!**/terraform.tfvars.example
+

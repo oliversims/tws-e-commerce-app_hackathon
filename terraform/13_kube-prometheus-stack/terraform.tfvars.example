@@ -1,0 +1,5 @@
+# Copy to terraform.tfvars on the bastion (do not commit terraform.tfvars).
+# cp terraform.tfvars.example terraform.tfvars
+
+slack_webhook_url = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+slack_channel     = "#alerts"
