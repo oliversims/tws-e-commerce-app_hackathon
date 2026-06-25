@@ -1,5 +1,11 @@
-# Copy to terraform.tfvars on the bastion (do not commit terraform.tfvars).
-# cp terraform.tfvars.example terraform.tfvars
+# Copy to terraform.tfvars on the bastion (gitignored — never commit).
+#
+#   cp terraform.tfvars.example terraform.tfvars
+#   nano terraform.tfvars
+#   terraform apply
+#
+# Terraform injects slack_webhook_url into Alertmanager on every apply.
+# Alternative: export TF_VAR_slack_webhook_url='https://hooks.slack.com/...'
 
 slack_webhook_url = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
 slack_channel     = "#alerts"
