@@ -35,7 +35,7 @@ spec:
     spec:
       containers:
       - name: migration
-        image: simsoliver/easyshop-migration:6
+        image: simsoliver/easyshop-migration:1
         imagePullPolicy: Always
         env:
         - name: MONGODB_URI

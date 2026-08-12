@@ -44,7 +44,7 @@ spec:
     spec:
       containers:
         - name: easyshop
-          image: simsoliver/easyshop-app:6
+          image: simsoliver/easyshop-app:1
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
