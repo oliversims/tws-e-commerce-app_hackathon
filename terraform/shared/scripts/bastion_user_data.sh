@@ -65,15 +65,6 @@ until aws s3 cp "s3://${state_bucket}/${state_key}" \
   /home/ubuntu/tws-e-commerce-app_hackathon/terraform/00_state/terraform.tfstate --region ${region}; do
   sleep 5
 done
-
-# 7. Copy bastion apply/destroy scripts into terraform/ and make them executable
-cp /home/ubuntu/tws-e-commerce-app_hackathon/terraform/shared/scripts/apply-07-to-13.sh \
-  /home/ubuntu/tws-e-commerce-app_hackathon/terraform/apply-07-to-13.sh
-cp /home/ubuntu/tws-e-commerce-app_hackathon/terraform/shared/scripts/destroy-13-to-07.sh \
-  /home/ubuntu/tws-e-commerce-app_hackathon/terraform/destroy-13-to-07.sh
-chmod +x /home/ubuntu/tws-e-commerce-app_hackathon/terraform/apply-07-to-13.sh \
-  /home/ubuntu/tws-e-commerce-app_hackathon/terraform/destroy-13-to-07.sh
-
 chown -R ubuntu:ubuntu /home/ubuntu/tws-e-commerce-app_hackathon
 
 touch /var/lib/bastion-kubectl-ready
