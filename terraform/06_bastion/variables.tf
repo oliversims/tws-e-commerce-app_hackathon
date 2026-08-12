@@ -1,4 +1,4 @@
-# 06_bastion — variables.tf
+# 06_bastion - variables.tf
 # Apply from your PC after 04_eks.
 
 variable "instance_type" {
