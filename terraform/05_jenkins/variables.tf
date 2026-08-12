@@ -6,10 +6,3 @@ variable "instance_type" {
   type        = string
   default     = "t3.medium"
 }
-
-# Empty = new Ubuntu + install script. Set by snapshot-and-destroy.sh after you save an AMI.
-variable "jenkins_ami_id" {
-  description = "Jenkins AMI ID (leave empty for first install)"
-  type        = string
-  default     = ""
-}

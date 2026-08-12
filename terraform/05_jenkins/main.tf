@@ -38,14 +38,14 @@ resource "aws_security_group" "allow_user_to_connect" {
   }
 }
 
-# Ubuntu EC2. Uses saved Jenkins AMI if jenkins_ami_id is set; otherwise fresh Ubuntu + install script.
+# Ubuntu EC2 — install_tools.sh installs Jenkins, Docker, and Trivy on first boot.
 resource "aws_instance" "testinstance" {
-  ami                    = var.jenkins_ami_id != "" ? var.jenkins_ami_id : data.aws_ami.os_image.id
+  ami                    = data.aws_ami.os_image.id
   instance_type          = var.instance_type
   key_name               = data.terraform_remote_state.keys.outputs.deployer_key_name
   vpc_security_group_ids = [aws_security_group.allow_user_to_connect.id]
   subnet_id              = data.terraform_remote_state.vpc.outputs.public_subnets[0]
-  user_data              = var.jenkins_ami_id != "" ? null : file("${path.module}/../shared/scripts/install_tools.sh")
+  user_data              = file("${path.module}/../shared/scripts/install_tools.sh")
 
   tags = {
     Name = "Jenkins-Automate"
