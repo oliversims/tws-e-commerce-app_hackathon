@@ -32,7 +32,6 @@ module "alb_controller" {
 
   app = {
     name          = "aws-load-balancer-controller"
-    description   = "aws-load-balancer-controller"
     version       = "1.13.3"
     chart         = "aws-load-balancer-controller"
     force_update  = true
