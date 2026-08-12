@@ -10,15 +10,13 @@ module "metrics_server" {
   repository = "https://kubernetes-sigs.github.io/metrics-server/"
 
   app = {
-    name             = "metrics-server"
-    description      = "metrics-server"
-    version          = "3.12.2"
-    chart            = "metrics-server"
-    force_update     = true
-    wait             = false
-    recreate_pods    = false
-    create_namespace = false
-    deploy           = 1
+    name          = "metrics-server"
+    version       = "3.12.2"
+    chart         = "metrics-server"
+    force_update  = true
+    wait          = false
+    recreate_pods = false
+    deploy        = 1
   }
 
   values = [file("${path.module}/values.yaml")]

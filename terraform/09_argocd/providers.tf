@@ -1,6 +1,6 @@
 # 09_argocd — providers.tf
-# Declares Helm and Kubernetes providers; pins versions and S3 backend.
-# Both providers use ~/.kube/config — apply on the bastion after 06_bastion.
+# Declares the Helm provider; pins version and S3 backend.
+# Helm uses ~/.kube/config — apply on the bastion after 06_bastion.
 # S3 backend key matches this folder (09_argocd/...).
 
 terraform {
@@ -10,10 +10,6 @@ terraform {
     helm = {
       source  = "hashicorp/helm"
       version = ">= 2.17"
-    }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "2.37.1"
     }
   }
 
@@ -29,8 +25,4 @@ provider "helm" {
   kubernetes = {
     config_path = "~/.kube/config"
   }
-}
-
-provider "kubernetes" {
-  config_path = "~/.kube/config"
 }

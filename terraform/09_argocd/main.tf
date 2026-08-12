@@ -12,7 +12,6 @@ module "argocd" {
 
   app = {
     name             = "my-argo-cd"
-    description      = "argo-cd"
     version          = "8.1.3"
     chart            = "argo-cd"
     force_update     = true

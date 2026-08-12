@@ -11,7 +11,6 @@ module "kube_prometheus_stack" {
 
   app = {
     name             = "my-kube-prometheus-stack"
-    description      = "my-kube-prometheus-stack"
     version          = "72.9.1"
     chart            = "kube-prometheus-stack"
     force_update     = true

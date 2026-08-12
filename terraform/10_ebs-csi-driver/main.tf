@@ -27,7 +27,6 @@ module "ebs_csi_driver" {
 
   app = {
     name          = "aws-ebs-csi-driver"
-    description   = "aws-ebs-csi-driver"
     version       = "2.45.1"
     chart         = "aws-ebs-csi-driver"
     force_update  = true
