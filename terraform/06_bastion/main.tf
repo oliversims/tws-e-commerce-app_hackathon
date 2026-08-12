@@ -3,25 +3,18 @@
 # Apply from your PC after 04_eks. Enables bastion workflow for stacks 07–13.
 # Uploads 00_state to S3 (see state_upload.tf) for bastion first-boot terraform.
 
-# Firewall: allows SSH, HTTP, and HTTPS from anywhere into the Bastion host.
+# Firewall: SSH only from allowed_ssh_cidr (your public IP).
 resource "aws_security_group" "allow_user_bastion" {
   name        = "bastion_host_SG"
-  description = "Allow user to connect"
+  description = "Allow SSH to bastion from trusted CIDR"
   vpc_id      = data.terraform_remote_state.vpc.outputs.vpc_id
 
-  dynamic "ingress" {
-    for_each = [
-      { description = "port 22 allow", from = 22, to = 22, protocol = "tcp", cidr = ["0.0.0.0/0"] },
-      { description = "port 80 allow", from = 80, to = 80, protocol = "tcp", cidr = ["0.0.0.0/0"] },
-      { description = "port 443 allow", from = 443, to = 443, protocol = "tcp", cidr = ["0.0.0.0/0"] }
-    ]
-    content {
-      description = ingress.value.description
-      from_port   = ingress.value.from
-      to_port     = ingress.value.to
-      protocol    = ingress.value.protocol
-      cidr_blocks = ingress.value.cidr
-    }
+  ingress {
+    description = "SSH from trusted CIDR"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.allowed_ssh_cidr]
   }
 
   egress {
@@ -66,9 +59,9 @@ resource "aws_iam_role_policy" "bastion_eks_describe" {
   })
 }
 
-# S3 + IAM for running terraform stacks 07–13 on the bastion.
+# S3 + IAM for running terraform stacks 07–13 on the bastion (IRSA roles/policies).
 resource "aws_iam_role_policy" "bastion_terraform_stacks" {
-  name = "terraform-stacks-06-10"
+  name = "terraform-stacks-bastion-irsa"
   role = aws_iam_role.bastion.id
 
   policy = jsonencode({
