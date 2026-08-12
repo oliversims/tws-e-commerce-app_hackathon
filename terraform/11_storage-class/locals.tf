@@ -1,4 +1,5 @@
-# 12_storage-class — locals.tf
+# 11_storage-class — locals.tf
+# Backend locals from 00_state — used by data.tf when reading the EBS CSI remote state.
 
 locals {
   backend_bucket = data.terraform_remote_state.state.outputs.state_bucket_name

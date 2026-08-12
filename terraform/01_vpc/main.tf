@@ -1,8 +1,9 @@
 # 01_vpc — main.tf
-# Creates the VPC and all core networking. Apply after 00_state.
+# Creates the VPC and core networking (subnets, IGW, NAT, route tables).
+# Apply from your PC after 00_state. Outputs feed 04_eks, 05_jenkins, 06_bastion.
+# Public subnets: Jenkins + Bastion. Private subnets: EKS nodes.
 
 # Builds VPC, subnets, internet gateway, NAT gateway, and route tables.
-# Public subnets: Jenkins, Bastion. Private subnets: EKS nodes.
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 5.18.1"
@@ -16,6 +17,11 @@ module "vpc" {
   enable_nat_gateway     = true
   single_nat_gateway     = true
   one_nat_gateway_per_az = false
+
+  # AWS still creates these with the VPC; do not manage them in Terraform.
+  manage_default_network_acl    = false
+  manage_default_route_table    = false
+  manage_default_security_group = false
 
   # Tag public subnets so Kubernetes can create internet-facing load balancers.
   public_subnet_tags = {

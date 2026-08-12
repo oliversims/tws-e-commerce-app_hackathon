@@ -1,5 +1,7 @@
 # 01_vpc — providers.tf
-# S3 backend is fully configured here — just run: terraform init && terraform apply
+# AWS provider region comes from local.region (00_state via state.tf → locals).
+# Remote Terraform state for this stack lives in the S3 bucket from 00_state.
+# Apply from your PC: terraform init && terraform apply
 
 terraform {
   required_version = ">= 1.5"
@@ -12,7 +14,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket       = "tfstate-tws-us-east-1-681j1a"
+    bucket       = "tfstate-tws-us-east-1-m67t3m"
     key          = "01_vpc/terraform.tfstate"
     region       = "us-east-1"
     use_lockfile = true

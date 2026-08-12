@@ -1,4 +1,7 @@
-# 13_metrics-server — providers.tf
+# 12_metrics-server — providers.tf
+# Declares the Helm provider; pins version and S3 backend.
+# Helm uses ~/.kube/config — apply on the bastion after 06_bastion.
+# S3 state key matches this folder name.
 
 terraform {
   required_version = ">= 1.5"
@@ -11,8 +14,8 @@ terraform {
   }
 
   backend "s3" {
-    bucket       = "tfstate-tws-us-east-1-681j1a"
-    key          = "13_metrics-server/terraform.tfstate"
+    bucket       = "tfstate-tws-us-east-1-m67t3m"
+    key          = "12_metrics-server/terraform.tfstate"
     region       = "us-east-1"
     use_lockfile = true
   }

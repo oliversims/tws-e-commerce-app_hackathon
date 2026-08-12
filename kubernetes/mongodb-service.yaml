@@ -1,0 +1,37 @@
+# =============================================================================
+# mongodb-service.yaml
+# =============================================================================
+# WHAT: A stable network name for MongoDB pods inside the cluster.
+# WHY:  Pod IPs change when pods restart. The Service name does not.
+#
+# EXAMPLE DNS names (all resolve to this Service):
+#   mongodb-service                      (from inside namespace easyshop)
+#   mongodb-service.easyshop             (from another namespace)
+#   mongodb-service.easyshop.svc.cluster.local
+#
+# Who uses it:
+#   ConfigMap (03):  MONGODB_URI=mongodb://mongodb-service:27017/easyshop
+#   Migration (11):  same URI
+#   App pods (07):   connect through that URI
+#
+# HOW traffic is routed:
+#   App pod → mongodb-service:27017 → kube-proxy → MongoDB pod:27017
+#
+# selector app: mongodb MUST match labels on StatefulSet pods (06).
+#   If labels don't match → Service has no endpoints → connection fails.
+#
+#   kubectl get endpoints mongodb-service -n easyshop
+#   → should list the mongodb pod IP
+# =============================================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-service
+  namespace: easyshop
+spec:
+  ports:
+    - port: 27017                 # Call this port on the Service
+      targetPort: 27017           # Forward to this port on the pod
+  selector:
+    app: mongodb                  # Send traffic to pods labeled app=mongodb

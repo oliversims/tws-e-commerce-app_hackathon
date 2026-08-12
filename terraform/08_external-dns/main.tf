@@ -1,6 +1,9 @@
 # 08_external-dns — main.tf
-# Watches Ingress resources and creates Route 53 records for *.simsoliver.com subdomains.
+# IRSA policy/role + ExternalDNS Helm chart for Route 53 record automation.
+# Watches Ingresses and creates DNS for subdomains; run on the bastion after 06_bastion.
+# Depends on 02_route53_acm and 04_eks; pairs with 07_alb-controller for public hostnames.
 
+# IAM policy document: ChangeResourceRecordSets on the hosted zone + list actions.
 data "aws_iam_policy_document" "external_dns" {
   statement {
     effect = "Allow"
@@ -29,6 +32,7 @@ resource "aws_iam_policy" "external_dns" {
   policy = data.aws_iam_policy_document.external_dns.json
 }
 
+# IAM role that lets the ExternalDNS pod update Route 53 (IRSA).
 module "iam_role" {
   source = "../modules/eks-oidc-iam-role"
 
@@ -41,6 +45,7 @@ module "iam_role" {
   }
 }
 
+# Helm release that installs ExternalDNS in kube-system.
 module "external_dns" {
   source = "../modules/helm-release"
 

@@ -1,5 +1,7 @@
 # 04_eks — main.tf
-# Creates the EKS cluster, worker nodes, and required addons.
+# Creates the EKS cluster, managed node group, and core addons.
+# Apply from your PC after 01_vpc and 03_keys. Private API only — use bastion/Jenkins.
+# Outputs (cluster name, OIDC) feed stacks 07+ run from the bastion.
 
 # Firewall rules allowing SSH (port 22) into EKS worker nodes for debugging.
 resource "aws_security_group" "node_group_remote_access" {
@@ -15,7 +17,7 @@ resource "aws_security_group" "node_group_remote_access" {
   }
 
   egress {
-    description = " allow all outgoing traffic "
+    description = "allow all outgoing traffic"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -73,7 +75,7 @@ module "eks" {
   control_plane_subnet_ids = data.terraform_remote_state.vpc.outputs.private_subnets
 
   eks_managed_node_group_defaults = {
-    instance_types = ["t3.large"]
+    instance_types                        = ["t3.large"]
     attach_cluster_primary_security_group = true
   }
 
@@ -84,8 +86,8 @@ module "eks" {
       max_size     = 3
       desired_size = 1
 
-      instance_types = ["t3.large"]
-      capacity_type  = "SPOT"
+      instance_types             = ["t3.large"]
+      capacity_type              = "SPOT"
       disk_size                  = 35
       use_custom_launch_template = false
 
@@ -103,18 +105,4 @@ module "eks" {
   }
 
   tags = local.tags
-}
-
-# Looks up running EC2 instances tagged as EKS nodes (used for output IPs).
-data "aws_instances" "eks_nodes" {
-  instance_tags = {
-    "eks:cluster-name" = module.eks.cluster_name
-  }
-
-  filter {
-    name   = "instance-state-name"
-    values = ["running"]
-  }
-
-  depends_on = [module.eks]
 }

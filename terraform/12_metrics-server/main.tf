@@ -1,6 +1,8 @@
-# 13_metrics-server — main.tf
+# 12_metrics-server — main.tf
 # Deploys metrics-server for kubectl top and HPA CPU/memory metrics.
+# Run on the bastion after 06_bastion; useful before 13_kube-prometheus-stack.
 
+# Helm release that installs metrics-server in kube-system.
 module "metrics_server" {
   source = "../modules/helm-release"
 

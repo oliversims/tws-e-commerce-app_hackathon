@@ -1,0 +1,42 @@
+# =============================================================================
+# hpa.yaml
+# =============================================================================
+# WHAT: HorizontalPodAutoscaler — auto-changes easyshop replica count.
+# WHY:  More traffic / CPU → add pods; quiet → scale back down (saves resources).
+#
+# NEEDS: terraform 12_metrics-server
+#   Without metrics-server, CPU metrics are missing and HPA cannot scale properly.
+#
+# EXAMPLE behavior:
+#   Deployment starts at replicas: 2 (from 07)
+#   Average CPU across pods rises above 70%
+#     → HPA increases replicas to 3, then 4, up to max 5
+#   CPU drops
+#     → HPA decreases back toward min 2
+#
+#   kubectl get hpa -n easyshop
+#   → NAME           REFERENCE           TARGETS        MINPODS   MAXPODS   REPLICAS
+#     easyshop-hpa   Deployment/easyshop cpu: 14%/70%   2         5         2
+#
+#   TARGETS "cpu: 14%/70%" means current 14%, goal 70%.
+# =============================================================================
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: easyshop-hpa
+  namespace: easyshop
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: easyshop
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

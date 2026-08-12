@@ -43,13 +43,14 @@ cd ~/tws-e-commerce-app_hackathon/terraform/13_kube-prometheus-stack && terrafor
 
 | Stack | Reads from |
 |-------|------------|
-| All stacks | `00_state` (bucket, region) |
+| `01`–`08`, `10`–`11` | `00_state` (bucket, region) |
 | `04_eks` | `01_vpc`, `03_keys` |
 | `05_jenkins` | `01_vpc`, `03_keys` |
 | `06_bastion` | `01_vpc`, `03_keys`, `04_eks` |
-| `07_alb-controller`, `10_ebs-csi-driver`, `12_metrics-server` | `04_eks` |
+| `07_alb-controller`, `10_ebs-csi-driver` | `04_eks` |
 | `08_external-dns` | `04_eks`, `02_route53_acm` |
 | `11_storage-class` | `10_ebs-csi-driver` |
+| `09_argocd`, `12_metrics-server`, `13_kube-prometheus-stack` | none (Helm only; S3 backend hardcoded) |
 
 ## Ingress hostnames (external-dns creates DNS for these)
 
@@ -59,10 +60,10 @@ Set hosts in each app's Ingress; external-dns syncs them to Route 53:
 |-----|------|
 | Argo CD | `09_argocd/values.yaml` — `server.ingress.hostname` |
 | Grafana / Prometheus | `13_kube-prometheus-stack/values.yaml` |
-| Easyshop | `kubernetes/09-ingress.yaml` |
+| Easyshop | `kubernetes/ingress.yaml` |
 
 ## Prerequisites
 
 - AWS credentials on your PC
 - SSH public key at `shared/terra-key.pub`
-- Stacks **07–12**: run from **bastion**
+- Stacks **07–13**: run from **bastion**

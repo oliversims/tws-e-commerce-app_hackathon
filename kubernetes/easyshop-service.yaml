@@ -1,0 +1,38 @@
+# =============================================================================
+# easyshop-service.yaml
+# =============================================================================
+# WHAT: Stable virtual IP / DNS name in front of easyshop pods.
+# WHY:  Ingress and clients should call a Service, not a changing pod IP.
+#
+# EXAMPLE DNS:
+#   easyshop-service.easyshop.svc.cluster.local:80
+#
+# EXAMPLE port mapping:
+#   Client/Ingress calls :80
+#        ↓
+#   Service forwards to pod :3000  (targetPort)
+#
+#   So: browser → ALB → Service:80 → pod:3000 → Next.js
+#
+# type NodePort example (debug only):
+#   Also opens port 30000 on every worker node.
+#   http://<node-private-ip>:30000  (usually from inside VPC / bastion)
+#
+# selector app: easyshop must match Deployment labels (07).
+#   kubectl get endpoints easyshop-service -n easyshop
+#   → should list both easyshop pod IPs when healthy
+# =============================================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: easyshop-service
+  namespace: easyshop
+spec:
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 3000
+      nodePort: 30000
+  selector:
+    app: easyshop

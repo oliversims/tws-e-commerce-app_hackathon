@@ -1,4 +1,7 @@
-# 12_storage-class — providers.tf
+# 11_storage-class — providers.tf
+# Declares the Kubernetes provider; pins version and S3 backend.
+# Uses ~/.kube/config — apply on the bastion after 06_bastion.
+# S3 state key matches this folder name.
 
 terraform {
   required_version = ">= 1.5"
@@ -11,8 +14,8 @@ terraform {
   }
 
   backend "s3" {
-    bucket       = "tfstate-tws-us-east-1-681j1a"
-    key          = "12_storage-class/terraform.tfstate"
+    bucket       = "tfstate-tws-us-east-1-m67t3m"
+    key          = "11_storage-class/terraform.tfstate"
     region       = "us-east-1"
     use_lockfile = true
   }

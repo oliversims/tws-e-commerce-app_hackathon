@@ -1,0 +1,36 @@
+# =============================================================================
+# configmap.yaml
+# =============================================================================
+# WHAT: Non-secret settings for the easyshop app (plain env vars).
+# WHY:  Change URLs/mode without rebuilding the Docker image.
+#       Secrets (passwords/tokens) do NOT belong here → see secrets.yaml.
+#
+# HOW pods get these values:
+#   Deployment (07) has envFrom.configMapRef → every key below becomes an env var.
+#
+# EXAMPLE inside an easyshop pod:
+#   echo $MONGODB_URI
+#   → mongodb://mongodb-service:27017/easyshop
+#
+#   echo $NEXT_PUBLIC_API_URL
+#   → https://easyshop.simsoliver.com/api
+#
+# Meaning of each key:
+#   MONGODB_URI         App connects to MongoDB Service (05) on the cluster network
+#   NODE_ENV            Run Next.js in production mode
+#   NEXT_PUBLIC_API_URL Browser-facing API URL (must match your real domain)
+#   NEXTAUTH_URL        Auth redirects/callbacks (must match Ingress host)
+#
+# If you change the domain, update NEXT_PUBLIC_API_URL and NEXTAUTH_URL here.
+# =============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: easyshop-config
+  namespace: easyshop
+data:
+  MONGODB_URI: "mongodb://mongodb-service:27017/easyshop"
+  NODE_ENV: "production"
+  NEXT_PUBLIC_API_URL: "https://easyshop.simsoliver.com/api"
+  NEXTAUTH_URL: "https://easyshop.simsoliver.com/"

@@ -1,8 +1,6 @@
 # 05_jenkins — outputs.tf
-
-locals {
-  jenkins_host = aws_eip.jenkins_server_ip.public_ip
-}
+# Operator helpers: SSH command, Jenkins URL, and initial admin password path.
+# Apply from your PC; use these from your workstation after apply.
 
 output "ssh_command" {
   description = "SSH into the Jenkins server"

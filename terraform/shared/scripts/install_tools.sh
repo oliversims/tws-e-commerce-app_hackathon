@@ -17,6 +17,7 @@ echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkin
 apt-get update
 apt-get install -y jenkins
 
+systemctl daemon-reload
 systemctl enable jenkins
 systemctl start jenkins
 
@@ -25,6 +26,7 @@ apt-get install -y docker.io
 usermod -aG docker ubuntu
 usermod -aG docker jenkins
 
+systemctl daemon-reload
 systemctl enable docker
 systemctl restart docker
 systemctl restart jenkins

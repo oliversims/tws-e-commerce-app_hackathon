@@ -1,0 +1,97 @@
+# =============================================================================
+# easyshop-deployment.yaml
+# =============================================================================
+# WHAT: Runs the Next.js easyshop website (stateless app pods).
+# WHY Deployment: you want N identical copies; if one dies, Kubernetes replaces it.
+#
+# EXAMPLE after apply:
+#   kubectl get deploy,pods -n easyshop -l app=easyshop
+#   → deployment.apps/easyshop   2/2
+#   → pod/easyshop-aaaa-xxxx     1/1 Running
+#   → pod/easyshop-aaaa-yyyy     1/1 Running
+#
+# Image example:
+#   simsoliver/easyshop-app:6
+#   └── Docker Hub repo          └── tag (often Jenkins BUILD_NUMBER)
+#
+# Env example inside a pod:
+#   envFrom ConfigMap + Secret loads MONGODB_URI, NODE_ENV, JWT_SECRET, etc.
+#   kubectl exec -n easyshop deploy/easyshop -- printenv MONGODB_URI
+#   → mongodb://mongodb-service:27017/easyshop
+#
+# Probe examples (HTTP GET / on port 3000):
+#   startupProbe   — "still starting?" wait before treating as dead
+#   readinessProbe — "ready for traffic?" if fail → removed from Service endpoints
+#   livenessProbe  — "still alive?" if fail → container restarted
+#
+# HPA (10) may change replicas from 2 up to 5 based on CPU.
+# =============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: easyshop
+  namespace: easyshop
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: easyshop
+  template:
+    metadata:
+      labels:
+        app: easyshop
+    spec:
+      containers:
+        - name: easyshop
+          image: simsoliver/easyshop-app:6
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: easyshop-config      # From 03 — all keys become env vars
+            - secretRef:
+                name: easyshop-secrets     # From 04 — all keys become env vars
+          env:
+            # Explicit auth-related bindings (clear source of each secret/config)
+            - name: NEXTAUTH_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: easyshop-config
+                  key: NEXTAUTH_URL
+            - name: NEXTAUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: easyshop-secrets
+                  key: NEXTAUTH_SECRET
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: easyshop-secrets
+                  key: JWT_SECRET
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          startupProbe:
+            httpGet:
+              path: /
+              port: 3000
+            failureThreshold: 30          # Example: 30 × 10s ≈ 5 min max startup
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 25
+            periodSeconds: 20

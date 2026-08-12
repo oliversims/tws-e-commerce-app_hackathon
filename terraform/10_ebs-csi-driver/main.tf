@@ -1,6 +1,7 @@
-# 11_ebs-csi-driver — main.tf
-# Creates an IRSA IAM role and deploys the AWS EBS CSI driver Helm chart.
-# Required before persistent volumes (StorageClass) can work in the cluster.
+# 10_ebs-csi-driver — main.tf
+# IRSA IAM role + AWS EBS CSI driver Helm chart for persistent volumes.
+# Run on the bastion after 06_bastion; required before 11_storage-class.
+# Depends on 04_eks; consumed (ordering) by 11_storage-class.
 
 # IAM role that lets the EBS CSI controller pod call AWS EBS APIs (IRSA).
 module "iam_role" {

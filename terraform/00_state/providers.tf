@@ -1,5 +1,7 @@
 # 00_state — providers.tf
+# AWS region comes from var.aws_region (default us-east-1).
 # Uses local state only (no S3 backend) because this stack creates the state bucket.
+# Apply from your PC before any other terraform stack.
 
 terraform {
   required_version = ">= 1.5"

@@ -1,0 +1,43 @@
+# =============================================================================
+# migration-job.yaml
+# =============================================================================
+# WHAT: A one-time Job that runs DB migrations against MongoDB.
+# WHY Job: run a task to completion, then stop (unlike a Deployment that runs forever).
+#
+# EXAMPLE lifecycle:
+#   1) Job creates a pod: db-migration-xxxxx
+#   2) Container runs simsoliver/easyshop-migration:6
+#   3) Connects to mongodb://mongodb-service:27017/easyshop
+#   4) Applies schema/seed changes
+#   5) Exits 0 → Job status Complete
+#
+#   kubectl get job,pods -n easyshop
+#   → job.batch/db-migration   Complete   1/1
+#   → pod/db-migration-abcde   0/1 Completed
+#
+# restartPolicy: OnFailure example:
+#   If migration exits with error → Kubernetes restarts the pod and tries again.
+#
+# Image tag (:6) should match the migration image your Jenkins pipeline pushed.
+#
+# NOTE: Jobs keep their name. To re-run after a completed Job, delete it first:
+#   kubectl delete job db-migration -n easyshop
+#   then sync/apply again.
+# =============================================================================
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migration
+  namespace: easyshop
+spec:
+  template:
+    spec:
+      containers:
+      - name: migration
+        image: simsoliver/easyshop-migration:6
+        imagePullPolicy: Always
+        env:
+        - name: MONGODB_URI
+          value: "mongodb://mongodb-service:27017/easyshop"
+      restartPolicy: OnFailure

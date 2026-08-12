@@ -1,0 +1,18 @@
+# 13_kube-prometheus-stack — why this stack exists
+#
+# Installs monitoring: Prometheus, Grafana, and Alertmanager.
+#
+# Without it:
+#   - No dashboards, metrics UI, or Slack alerting for the cluster/apps
+#
+# Run from: Bastion (after 06; Ingress/DNS need 07 + 08)
+# Creates:  Helm release in namespace monitoring
+# Used by:  Operators — Grafana, Prometheus, Alertmanager
+#
+# URLs:
+#   https://grafana.simsoliver.com
+#   https://prometheus.simsoliver.com
+#   https://alertmanager.simsoliver.com
+#
+# Before apply: set Slack webhook api_url in values.yaml on the bastion only
+# (do not commit secrets). Empty api_url prevents Alertmanager from starting.

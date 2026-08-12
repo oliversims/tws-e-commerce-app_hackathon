@@ -1,0 +1,13 @@
+# 08_external-dns — why this stack exists
+#
+# Automatically creates Route 53 records from Ingress hostnames.
+#
+# Without it:
+#   - You would create DNS records by hand for every hostname
+#
+# Run from: Bastion (after 06)
+# Creates:  IAM policy/role (IRSA) + ExternalDNS Helm release
+# Used by:  Same Ingresses as 07 — DNS points at the ALB automatically
+#
+# Depends on: 02_route53_acm (hosted zone) + 04_eks (OIDC)
+# Example: host easyshop.simsoliver.com → A/ALIAS to the ALB

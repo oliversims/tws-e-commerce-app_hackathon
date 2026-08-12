@@ -1,0 +1,16 @@
+# 01_vpc — why this stack exists
+#
+# Builds the AWS network that everything else runs in.
+#
+# Without it:
+#   - No place to put EKS, Jenkins, or bastion
+#   - No private subnets for worker nodes / no public subnets for jump hosts
+#
+# Run from: PC (after 00_state)
+# Creates:  VPC, 2 AZs, public + private subnets, IGW, single NAT
+# Used by:  04_eks (private), 05_jenkins + 06_bastion (public), 07_alb-controller
+#
+# Layout:
+#   Public  → Jenkins EC2, bastion EC2, internet-facing ALBs
+#   Private → EKS worker nodes
+#   NAT     → private nodes can pull images and reach AWS APIs

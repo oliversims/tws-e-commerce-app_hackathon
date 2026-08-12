@@ -1,4 +1,7 @@
-# 10_kube-prometheus-stack — providers.tf
+# 13_kube-prometheus-stack — providers.tf
+# Declares Helm and Kubernetes providers; pins versions and S3 backend.
+# Both providers use ~/.kube/config — apply on the bastion after 06_bastion.
+# S3 state key matches this folder name.
 
 terraform {
   required_version = ">= 1.5"
@@ -15,8 +18,8 @@ terraform {
   }
 
   backend "s3" {
-    bucket       = "tfstate-tws-us-east-1-681j1a"
-    key          = "10_kube-prometheus-stack/terraform.tfstate"
+    bucket       = "tfstate-tws-us-east-1-m67t3m"
+    key          = "13_kube-prometheus-stack/terraform.tfstate"
     region       = "us-east-1"
     use_lockfile = true
   }

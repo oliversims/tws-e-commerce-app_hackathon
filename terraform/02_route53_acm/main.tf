@@ -1,4 +1,7 @@
-# 02_route53_acm — Route 53 zone + ACM cert (simsoliver.com + *.simsoliver.com)
+# 02_route53_acm — main.tf
+# Creates the Route 53 hosted zone + ACM wildcard cert for simsoliver.com.
+# Apply from your PC after 00_state. DNS validation records are created here.
+# Outputs feed 08_external-dns; certificate_arn is also used in Ingress YAML.
 
 resource "aws_route53_zone" "main" {
   name = var.domain_name
@@ -8,6 +11,7 @@ resource "aws_route53_zone" "main" {
   }
 }
 
+# Wildcard ACM cert (apex + *.) — must stay in the same region as the ALB (us-east-1).
 resource "aws_acm_certificate" "main" {
   domain_name               = var.domain_name
   subject_alternative_names = ["*.${var.domain_name}"]
@@ -18,6 +22,7 @@ resource "aws_acm_certificate" "main" {
   }
 }
 
+# DNS validation CNAME so ACM can issue the cert automatically.
 resource "aws_route53_record" "cert_validation" {
   allow_overwrite = true
   zone_id         = aws_route53_zone.main.zone_id

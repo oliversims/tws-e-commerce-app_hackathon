@@ -1,0 +1,13 @@
+# 03_keys — why this stack exists
+#
+# Registers your SSH public key in AWS so you can log into EC2.
+#
+# Without it:
+#   - Cannot SSH to Jenkins or bastion
+#   - EKS node remote_access has no key pair
+#
+# Run from: PC (after 00_state)
+# Creates:  EC2 key pair "terra-automate-key" from shared/terra-key.pub
+# Used by:  04_eks (node SSH), 05_jenkins, 06_bastion
+#
+# Private key stays on your PC (never commit terra-key).

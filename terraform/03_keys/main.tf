@@ -1,5 +1,7 @@
 # 03_keys — main.tf
-# Uploads your SSH public key to AWS so EC2 and EKS can use it.
+# Registers your SSH public key in AWS so EC2 (and EKS node SSH) can use it.
+# Apply from your PC after 00_state. Requires shared/terra-key.pub on disk.
+# Output key name is consumed by 04_eks, 05_jenkins, and 06_bastion.
 
 # Registers the public key from shared/terra-key.pub as an AWS key pair.
 # The private key stays on your machine — never commit it.

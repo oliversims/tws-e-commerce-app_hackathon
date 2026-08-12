@@ -1,17 +1,12 @@
 # modules/helm-release — main.tf
-# Reusable module: deploys any Helm chart with configurable values and --set overrides.
-# Called by Kubernetes stacks (06–10); not applied directly.
+# Reusable module: deploys any Helm chart with values and --set overrides.
+# Used by bastion stacks 07–13; not applied directly.
 
-# Installs or upgrades a Helm chart when app["deploy"] is 1.
 resource "helm_release" "this" {
-  count                      = var.app["deploy"] ? 1 : 0
+  count = var.app["deploy"] ? 1 : 0
+
   namespace                  = var.namespace
   repository                 = var.repository
-  repository_key_file        = lookup(var.repository_config, "repository_key_file", null)
-  repository_cert_file       = lookup(var.repository_config, "repository_cert_file", null)
-  repository_ca_file         = lookup(var.repository_config, "repository_ca_file", null)
-  repository_username        = lookup(var.repository_config, "repository_username", null)
-  repository_password        = lookup(var.repository_config, "repository_password", null)
   name                       = var.app["name"]
   version                    = var.app["version"]
   chart                      = var.app["chart"]
@@ -37,6 +32,8 @@ resource "helm_release" "this" {
   timeout                    = lookup(var.app, "timeout", 300)
   values                     = var.values
 
-  set = [for item in coalesce(var.set, []) : { "name" : item.name, "value" : item.value }]
-  set_sensitive = [for item in coalesce(var.set_sensitive, []) : { "name" : item.name, "value" : item.value }]
+  set = [for item in coalesce(var.set, []) : {
+    name  = item.name
+    value = item.value
+  }]
 }

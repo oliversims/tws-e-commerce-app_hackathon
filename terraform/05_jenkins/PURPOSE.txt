@@ -1,0 +1,14 @@
+# 05_jenkins — why this stack exists
+#
+# Provides CI: build Docker images and push them to Docker Hub.
+#
+# Without it:
+#   - No automated image builds for easyshop-app / easyshop-migration
+#   - You would build and push images by hand
+#
+# Run from: PC (after 01_vpc + 03_keys)
+# Creates:  EC2 + Elastic IP + security group (SSH + 8080)
+# Used by:  You — Jenkinsfile pipeline → images used by kubernetes/
+#
+# Boot script installs Jenkins, Docker, Trivy, AWS CLI, Helm.
+# Setup steps: RESTORATION.txt PHASE 1b

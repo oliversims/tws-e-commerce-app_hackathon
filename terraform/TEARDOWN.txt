@@ -1,0 +1,213 @@
+# Terraform — full teardown guide
+#
+# Destroys the platform completely. Order is the REVERSE of RESTORATION.txt.
+# Companion: RESTORATION.txt
+#
+# Region:           us-east-1
+# State bucket:     value in each stack providers.tf backend (must match 00_state)
+# Bastion repo:     ~/tws-e-commerce-app_hackathon
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# BEFORE YOU START
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# 1. AWS CLI on your PC (same account used to deploy).
+# 2. Bastion still running and reachable (required for stacks 07–13).
+# 3. Expect 20–45 minutes (EKS destroy is slow).
+# 4. This is destructive — back up anything you need first.
+#
+# SSH to bastion (from your PC):
+#   cd terraform/06_bastion && terraform output -raw ssh_command
+#
+# Per SSH session on bastion:
+#   export TF_REGISTRY_CLIENT_TIMEOUT=300
+#   export TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin-cache
+#
+# If terraform reports a state lock:
+#   terraform force-unlock <LOCK_ID>
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# PHASE 1 — DELETE EASYSHOP (bastion)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Check:
+#   kubectl get applications -n argocd
+#   kubectl get ns easyshop
+#
+# If the Argo CD application exists:
+#   kubectl delete application easyshop -n argocd --wait
+#
+# If there is no application but the namespace still exists:
+#   kubectl delete namespace easyshop --wait
+#
+# Verify (namespace must be gone):
+#   kubectl get ns easyshop
+#   kubectl get pvc -A
+#
+# If namespace is stuck Terminating:
+#   kubectl api-resources --verbs=list --namespaced -o name \
+#     | xargs -n1 kubectl get -n easyshop 2>/dev/null
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# PHASE 2 — BASTION STACKS (13 → 07)
+# ═══════════════════════════════════════════════════════════════════════════════
+# Stay on the bastion. Destroy in this exact order.
+#
+# --- 13_kube-prometheus-stack ---
+#   cd ~/tws-e-commerce-app_hackathon/terraform/13_kube-prometheus-stack
+#   terraform init && terraform destroy
+#
+#   kubectl get ns monitoring
+#   # expect: NotFound
+#
+# --- 12_metrics-server ---
+#   cd ~/tws-e-commerce-app_hackathon/terraform/12_metrics-server
+#   terraform init && terraform destroy
+#
+#   kubectl get deploy -n kube-system metrics-server
+#   # expect: NotFound
+#
+# --- 11_storage-class ---
+#   cd ~/tws-e-commerce-app_hackathon/terraform/11_storage-class
+#   terraform init && terraform destroy
+#
+#   kubectl get storageclass ebs-storage-class
+#   # expect: NotFound
+#
+# --- 10_ebs-csi-driver ---
+#   cd ~/tws-e-commerce-app_hackathon/terraform/10_ebs-csi-driver
+#   terraform init && terraform destroy
+#
+#   helm list -n kube-system | grep ebs
+#   # expect: empty
+#
+# --- 09_argocd ---
+#   cd ~/tws-e-commerce-app_hackathon/terraform/09_argocd
+#   terraform init && terraform destroy
+#
+#   kubectl get ns argocd
+#   # expect: NotFound
+#
+# --- 08_external-dns ---
+#   cd ~/tws-e-commerce-app_hackathon/terraform/08_external-dns
+#   terraform init && terraform destroy
+#
+#   kubectl get deploy -n kube-system external-dns
+#   # expect: NotFound
+#
+# --- 07_alb-controller ---
+#   cd ~/tws-e-commerce-app_hackathon/terraform/07_alb-controller
+#   terraform init && terraform destroy
+#
+#   kubectl get pods -n kube-system -l app.kubernetes.io/name=aws-load-balancer-controller
+#   # expect: no resources
+#   kubectl get ingress -A
+#   # expect: empty
+#
+# Phase 2 done check:
+#   kubectl get pods -A
+#   kubectl get ingress -A
+#   kubectl get pvc -A
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# PHASE 3 — PC STACKS (06 → 01)
+# ═══════════════════════════════════════════════════════════════════════════════
+# Run from your PC in the repo. After 06 is destroyed you cannot SSH to bastion.
+#
+# --- 06_bastion ---
+#   cd terraform/06_bastion
+#   terraform init && terraform destroy
+#
+#   aws ec2 describe-instances --region us-east-1 \
+#     --filters "Name=tag:Name,Values=Bastion-Host" "Name=instance-state-name,Values=running" \
+#     --query 'Reservations[].Instances[].InstanceId' --output text
+#   # expect: empty
+#
+# --- 05_jenkins ---
+#   cd terraform/05_jenkins
+#   terraform init && terraform destroy
+#
+#   aws ec2 describe-instances --region us-east-1 \
+#     --filters "Name=tag:Name,Values=Jenkins-Automate" "Name=instance-state-name,Values=running" \
+#     --query 'Reservations[].Instances[].InstanceId' --output text
+#   # expect: empty
+#
+# --- 04_eks ---
+# Takes 10–15+ minutes. If destroy fails on node group / ENI / SG, wait 5 minutes and retry.
+#
+#   cd terraform/04_eks
+#   terraform init && terraform destroy
+#
+#   aws eks describe-cluster --name tws-eks-cluster --region us-east-1
+#   # expect: ResourceNotFoundException
+#
+# --- 03_keys ---
+# Removes the AWS key pair only (local terra-key files stay on disk).
+#
+#   cd terraform/03_keys
+#   terraform init && terraform destroy
+#
+#   aws ec2 describe-key-pairs --region us-east-1 --key-names terra-automate-key
+#   # expect: InvalidKeyPair.NotFound
+#
+# --- 02_route53_acm ---
+# Destroys ACM cert + Route 53 hosted zone for simsoliver.com.
+# After destroy, fix nameservers at your registrar if you keep the domain.
+#
+#   cd terraform/02_route53_acm
+#   terraform init && terraform destroy
+#
+# If destroy fails because records remain:
+#   aws route53 list-resource-record-sets --hosted-zone-id <ZONE_ID>
+#   (delete leftover non-NS/SOA records, then retry destroy)
+#
+#   aws route53 list-hosted-zones-by-name --dns-name simsoliver.com --query 'HostedZones[].Name'
+#   # expect: empty
+#
+# --- 01_vpc ---
+#   cd terraform/01_vpc
+#   terraform init && terraform destroy
+#
+# If destroy fails (NAT / ELB / ENI / EBS leftovers):
+#   remove orphans in AWS Console → VPC / EC2, then retry destroy.
+#
+#   aws ec2 describe-vpcs --region us-east-1 \
+#     --filters "Name=tag:Name,Values=tws-eks-cluster" \
+#     --query 'Vpcs[].VpcId' --output text
+#   # expect: empty
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# PHASE 4 — STATE BUCKET (last)
+# ═══════════════════════════════════════════════════════════════════════════════
+# Only after every other stack is destroyed.
+#
+#   cd terraform/00_state
+#   terraform init && terraform destroy
+#
+#   aws s3 ls | grep tfstate
+#   # expect: your project bucket gone
+#
+# Delete the local state file after verify:
+#   terraform/00_state/terraform.tfstate
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# FINAL VERIFY
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+#   aws eks list-clusters --region us-east-1
+#   aws ec2 describe-vpcs --region us-east-1 --filters "Name=tag:Name,Values=tws-eks-cluster"
+#   aws s3 ls | grep tfstate
+#   aws elbv2 describe-load-balancers --region us-east-1 --query 'LoadBalancers[].LoadBalancerName'
+#
+# All should return empty / no project resources.
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# DESTROY ORDER (cheat sheet)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+#  [Bastion]  delete easyshop → verify namespace gone
+#  [Bastion]  13 → 12 → 11 → 10 → 09 → 08 → 07
+#  [PC]       06 → 05 → 04 → 03 → 02 → 01
+#  [PC last]  00_state
+#
+# Rebuild later: see RESTORATION.txt

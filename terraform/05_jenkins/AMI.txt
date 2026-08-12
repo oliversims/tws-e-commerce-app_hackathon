@@ -1,0 +1,18 @@
+# Jenkins AMI — simple guide (WSL)
+#
+# First time:
+#   terraform init && terraform apply
+#   configure Jenkins (jobs, plugins)
+#
+# Save + destroy:
+#   ./snapshot-and-destroy.sh
+#
+# Next time:
+#   terraform apply
+#
+# Start over with a blank Jenkins (optional):
+#   rm -f jenkins_ami_id.auto.tfvars
+#   terraform apply
+#
+# Note: old AMIs are not deleted by the script.
+# Remove unused ones in AWS Console → EC2 → AMIs if you want.

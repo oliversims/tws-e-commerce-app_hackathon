@@ -1,5 +1,7 @@
 # 09_argocd — main.tf
-# Deploys Argo CD via Helm for GitOps-based application delivery to the cluster.
+# Deploys Argo CD via Helm for GitOps application delivery to the cluster.
+# Run on the bastion after 06_bastion; typically after 07_alb-controller / 08_external-dns
+# if you expose the Argo CD UI with an Ingress and DNS.
 
 # Helm release that installs Argo CD in the argocd namespace.
 module "argocd" {

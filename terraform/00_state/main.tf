@@ -1,6 +1,9 @@
 # 00_state — main.tf
-# S3 bucket for Terraform remote state — versioning, encryption, block public access.
+# Creates the S3 bucket that stores remote Terraform state for every later stack.
+# Apply once from your PC (local state only — this stack has no S3 backend).
+# Outputs (bucket name + region) are consumed by all stacks 01+ via their state.tf.
 
+# Random suffix so the global S3 bucket name stays unique across accounts/regions.
 resource "random_string" "suffix" {
   length  = 6
   upper   = false

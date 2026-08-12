@@ -1,4 +1,7 @@
 # 07_alb-controller — providers.tf
+# Declares AWS, Helm, and Kubernetes providers; pins versions and S3 backend.
+# Helm/Kubernetes talk to the cluster via ~/.kube/config — run on the bastion.
+# S3 backend key matches this folder (07_alb-controller/...).
 
 terraform {
   required_version = ">= 1.5"
@@ -19,7 +22,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket       = "tfstate-tws-us-east-1-681j1a"
+    bucket       = "tfstate-tws-us-east-1-m67t3m"
     key          = "07_alb-controller/terraform.tfstate"
     region       = "us-east-1"
     use_lockfile = true

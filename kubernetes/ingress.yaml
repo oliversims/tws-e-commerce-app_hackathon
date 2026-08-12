@@ -1,0 +1,57 @@
+# =============================================================================
+# ingress.yaml
+# =============================================================================
+# WHAT: Public HTTPS website entry: https://easyshop.simsoliver.com
+# WHY:  Expose the app on the internet with a real domain and TLS certificate.
+#
+# NEEDS (Terraform on bastion):
+#   07_alb-controller → turns this Ingress into an AWS Application Load Balancer
+#   08_external-dns   → creates Route 53 record for host: easyshop.simsoliver.com
+#   02_route53_acm    → ACM certificate ARN used in annotations below
+#
+# EXAMPLE end-to-end path:
+#   Browser
+#     → https://easyshop.simsoliver.com
+#     → Route 53 (DNS) points to ALB
+#     → ALB terminates TLS (ACM cert)
+#     → forwards HTTP to easyshop-service:80
+#     → Service sends to easyshop pod:3000
+#
+# EXAMPLE after sync:
+#   kubectl get ingress -n easyshop
+#   → HOST                      ADDRESS
+#     easyshop.simsoliver.com   k8s-easyshopapplb-xxxx.us-east-1.elb.amazonaws.com
+#
+# group.name example:
+#   easyshop-app-lb shared with Argo CD / Grafana Ingresses → one shared ALB (cheaper).
+#
+# If you recreate ACM in a new account/region, update certificate-arn.
+# =============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: easyshop-ingress
+  namespace: easyshop
+  annotations:
+    alb.ingress.kubernetes.io/group.name: easyshop-app-lb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/3fa96c7e-2481-470b-9c26-1cd45eb8cb6c
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'   # Example: http://... redirects to https://
+    kubernetes.io/ingress.class: alb
+spec:
+  ingressClassName: alb
+  rules:
+  - host: easyshop.simsoliver.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix              # Example: / , /api , /login all go to the app
+        backend:
+          service:
+            name: easyshop-service
+            port:
+              number: 80

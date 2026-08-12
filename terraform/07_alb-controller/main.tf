@@ -1,6 +1,7 @@
 # 07_alb-controller — main.tf
-# Creates IAM policy/role and deploys the AWS Load Balancer Controller Helm chart.
-# Enables Kubernetes Ingress resources to provision ALBs in AWS.
+# IAM policy/role (IRSA) + AWS Load Balancer Controller Helm chart.
+# Lets Ingress resources provision ALBs; run on the bastion after 06_bastion.
+# Depends on 01_vpc and 04_eks; enables Ingress-based apps (e.g. Argo CD, Grafana).
 
 # Custom IAM policy granting permissions to create and manage ALBs/NLBs.
 resource "aws_iam_policy" "alb_policy" {

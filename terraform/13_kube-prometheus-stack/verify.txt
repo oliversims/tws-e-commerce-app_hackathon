@@ -1,4 +1,15 @@
-# 13_kube-prometheus-stack — check deployment (run on bastion)
+# 13_kube-prometheus-stack — run on bastion
+#
+# BEFORE terraform apply — set your Slack webhook (do not commit to GitHub):
+#   File:   values.yaml
+#   Line:   ~548
+#   Field:  alertmanager.config.receivers → slack-notification → slack_configs → api_url
+#
+#   api_url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
+#
+# If api_url is empty, Alertmanager will fail to start.
+
+# terraform init && terraform apply
 
 kubectl get pods -n monitoring
 kubectl rollout status deploy/my-kube-prometheus-stack-grafana -n monitoring

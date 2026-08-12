@@ -1,4 +1,7 @@
 # 09_argocd — providers.tf
+# Declares Helm and Kubernetes providers; pins versions and S3 backend.
+# Both providers use ~/.kube/config — apply on the bastion after 06_bastion.
+# S3 backend key matches this folder (09_argocd/...).
 
 terraform {
   required_version = ">= 1.5"
@@ -15,7 +18,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket       = "tfstate-tws-us-east-1-681j1a"
+    bucket       = "tfstate-tws-us-east-1-m67t3m"
     key          = "09_argocd/terraform.tfstate"
     region       = "us-east-1"
     use_lockfile = true

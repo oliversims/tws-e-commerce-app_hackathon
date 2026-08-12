@@ -1,4 +1,6 @@
 # 01_vpc — outputs.tf
+# Networking IDs and cluster name for downstream stacks.
+# Apply from your PC; consumers read these via terraform_remote_state.
 
 output "region" {
   description = "Used by 07_alb-controller"
@@ -11,7 +13,7 @@ output "vpc_id" {
 }
 
 output "cluster_name" {
-  description = "Used by 04_eks"
+  description = "Used by 04_eks and 06_bastion"
   value       = local.name
 }
 

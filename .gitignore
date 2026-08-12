@@ -100,4 +100,5 @@ terra-key
 terraform/0*/**/.terraform/*
 terraform/00_state/terraform.tfstate
 terraform/00_state/terraform.tfstate.backup
+terraform/05_jenkins/jenkins_ami_id.auto.tfvars
 

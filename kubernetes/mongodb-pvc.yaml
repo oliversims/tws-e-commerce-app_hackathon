@@ -1,0 +1,37 @@
+# =============================================================================
+# mongodb-pvc.yaml
+# =============================================================================
+# WHAT: Requests a 5 GiB persistent disk for MongoDB data.
+# WHY:  If the MongoDB pod dies/restarts, data on the pod filesystem is lost.
+#       A PVC keeps data on an AWS EBS volume that outlives the pod.
+#
+# NEEDS (Terraform on bastion):
+#   10_ebs-csi-driver  → can create EBS volumes
+#   11_storage-class   → defines StorageClass name "ebs-storage-class"
+#
+# EXAMPLE flow:
+#   1) You apply this PVC
+#   2) Kubernetes sees storageClassName: ebs-storage-class
+#   3) EBS CSI driver creates something like a 5 GiB gp3 volume in AWS
+#   4) PVC status becomes Bound
+#   5) StatefulSet (06) mounts that volume at /data/db
+#
+#   kubectl get pvc -n easyshop
+#   → NAME          STATUS   VOLUME                                     CAPACITY
+#     mongodb-pvc   Bound    pvc-aaaa-bbbb-cccc                        5Gi
+#
+# Without this file (or without stacks 10+11): MongoDB PVC stays Pending.
+# =============================================================================
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-pvc
+  namespace: easyshop
+spec:
+  accessModes:
+    - ReadWriteOnce              # Example: one pod/node mounts it read-write (EBS rule)
+  storageClassName: ebs-storage-class   # Must match terraform/11_storage-class
+  resources:
+    requests:
+      storage: 5Gi               # Example: AWS creates ~5 GiB EBS disk

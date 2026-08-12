@@ -1,0 +1,267 @@
+# Terraform — stack guide
+#
+# Plain-English explanation of every stack folder and what it is used for.
+# Apply order: 00 → 13 (see README.md). Destroy order: reverse (see TEARDOWN.txt).
+# Full rebuild steps: RESTORATION.txt
+#
+# Domain (current):  simsoliver.com
+# Region (current):  us-east-1
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# BIG PICTURE
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+#   PC stacks (00–06)   = AWS foundation: network, DNS/TLS, EKS, Jenkins, bastion
+#   Bastion stacks (07–13) = cluster add-ons: ALB, DNS sync, GitOps, storage, metrics, monitoring
+#   Not Terraform      = easyshop app (kubernetes/ manifests, usually via Argo CD UI)
+#
+#   Internet
+#      │
+#      ▼
+#   Route 53 (02) + ACM HTTPS cert (02)
+#      │
+#      ▼
+#   ALB (created by 07 from Ingresses)
+#      │
+#      ├── argocd.simsoliver.com        (09)
+#      ├── easyshop.simsoliver.com      (kubernetes/)
+#      ├── grafana / prometheus / alertmanager  (13)
+#      │
+#   EKS cluster (04) in VPC (01)
+#      ├── Jenkins CI (05) builds/pushes Docker images
+#      └── Bastion (06) runs kubectl + terraform 07–13
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# SHARED PIECES (not numbered stacks)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# terraform/shared/
+#   terra-key / terra-key.pub     SSH key used by Jenkins + bastion EC2
+#   scripts/bastion_user_data.sh  First-boot: install tools, kubeconfig, clone repo
+#   scripts/install_tools.sh      First-boot on Jenkins: Jenkins + Docker + Trivy
+#
+# terraform/modules/
+#   eks-oidc-iam-role   Reusable IRSA IAM role (pods assume AWS permissions)
+#   helm-release        Reusable Helm chart installer (used by 07–13)
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# 00_state — Terraform remote state bucket
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Where:   PC (run once, first)
+# Creates: S3 bucket that stores terraform.tfstate for all later stacks
+# Why:     So every stack shares one remote state store (and bastion can read it)
+# Used by: ALL stacks (via state.tf + S3 backend)
+#
+# Local file (gitignored): terraform/00_state/terraform.tfstate
+# Bastion also gets a copy uploaded by 06_bastion (state_upload.tf).
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# 01_vpc — Network foundation
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Where:   PC
+# Creates: VPC, 2 AZs (e.g. us-east-1a/b), public + private subnets, IGW, NAT
+# Why:     Isolated network for EKS, Jenkins, and bastion
+# Used by: 04_eks (cluster lives here), 05_jenkins, 06_bastion
+#
+# Layout:
+#   Public subnets  → Jenkins EC2, bastion EC2, internet-facing ALBs
+#   Private subnets → EKS worker nodes
+#   Single NAT      → private nodes can pull images / reach AWS APIs
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# 02_route53_acm — DNS + HTTPS certificate
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Where:   PC
+# Creates: Route 53 hosted zone for simsoliver.com
+#          ACM wildcard cert for simsoliver.com + *.simsoliver.com
+# Why:     Public DNS names and HTTPS for all Ingresses
+# Used by: 08_external-dns (writes DNS records into the zone)
+#          Ingress YAMLs (ACM certificate ARN for TLS on ALB)
+#
+# Without this: no public hostnames / no trusted HTTPS on ALB.
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# 03_keys — SSH key pair in AWS
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Where:   PC
+# Creates: AWS key pair "terra-automate-key" from shared/terra-key.pub
+# Why:     So you can SSH into Jenkins and bastion EC2 instances
+# Used by: 04_eks (node SSH), 05_jenkins, 06_bastion
+#
+# Private key stays on your PC (never commit terra-key).
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# 04_eks — Kubernetes cluster
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Where:   PC
+# Creates: EKS control plane + managed node group + core addons
+# Why:     The platform that runs Argo CD, easyshop, monitoring, etc.
+# Used by: 06_bastion (kubeconfig / access), and all bastion stacks 07–13
+#
+# Notes:
+#   - API endpoint is private → your PC cannot kubectl directly
+#   - Use bastion (or Jenkins with proper access) to talk to the cluster
+#   - Outputs cluster name + OIDC URL (needed for IRSA in 07, 08, 10)
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# 05_jenkins — CI server (build & push images)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Where:   PC
+# Creates: EC2 instance + Elastic IP + security group (port 8080)
+# Why:     Continuous Integration — build Docker images and push to Docker Hub
+# Used by: Your pipeline (Jenkinsfile) → images used by kubernetes/ deployments
+#
+# Boot script (install_tools.sh) installs: Jenkins, Docker, Trivy, AWS CLI, Helm.
+# Not required for the cluster to run, but required for automated image builds.
+# Setup details: RESTORATION.txt PHASE 1b, JENKINS.md, Jenkinsfile
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# 06_bastion — Jump host into the private EKS API
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Where:   PC (apply after 04_eks)
+# Creates: Bastion EC2 in a public subnet + IAM role + EKS access entry
+# Why:     SSH jump box with kubectl/terraform/helm ready for stacks 07–13
+# Used by: YOU — all cluster Terraform and kubectl work runs here
+#
+# On first boot (bastion_user_data.sh):
+#   - Installs awscli, kubectl, terraform, helm, git
+#   - Configures kubeconfig for the EKS cluster
+#   - Clones the GitHub repo
+#   - Downloads 00_state from S3 (uploaded by state_upload.tf)
+#
+# After this stack: SSH in and apply 07 → 13.
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# 07_alb-controller — AWS Load Balancer Controller
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Where:   Bastion
+# Creates: IAM policy/role (IRSA) + Helm release in kube-system
+# Why:     Turns Kubernetes Ingress objects into real AWS ALBs
+# Used by: Every public app Ingress (Argo CD, easyshop, Grafana, Prometheus, …)
+#
+# Without this: Ingress resources do nothing useful in AWS.
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# 08_external-dns — Auto DNS from Ingress hostnames
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Where:   Bastion
+# Creates: IAM policy/role (IRSA) + ExternalDNS Helm release
+# Why:     When an Ingress has host: foo.simsoliver.com, creates the Route 53 record
+# Used by: Same Ingresses as 07 — DNS points at the ALB automatically
+#
+# Depends on: 02_route53_acm (hosted zone) + 04_eks (OIDC for IRSA)
+# Without this: you would create DNS records by hand.
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# 09_argocd — GitOps control plane
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Where:   Bastion (after 07 + 08 for public UI)
+# Creates: Argo CD Helm release in namespace argocd
+# Why:     Continuously sync Kubernetes manifests from Git into the cluster
+# Used by: Deploying easyshop (and any other apps) from GitHub
+#
+# UI: https://argocd.simsoliver.com
+# App deploy is usually MANUAL in the Argo CD UI (not a Terraform Application).
+# Manifests path: kubernetes/
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# 10_ebs-csi-driver — Persistent disk driver for EKS
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Where:   Bastion
+# Creates: IRSA role + AWS EBS CSI driver Helm chart
+# Why:     Lets Kubernetes create real EBS volumes for PersistentVolumeClaims
+# Used by: 11_storage-class, then MongoDB PVC in easyshop
+#
+# Without this: PVCs stay Pending (no volume provisioner for EBS).
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# 11_storage-class — Default EBS StorageClass
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Where:   Bastion (after 10)
+# Creates: StorageClass named ebs-storage-class (default)
+# Why:     Defines HOW volumes are created (EBS CSI, Delete reclaim, WaitForFirstConsumer)
+# Used by: kubernetes/mongodb-pvc.yaml → MongoDB data disk
+#
+# Pair with 10: driver does the work; StorageClass is the policy/name PVCs request.
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# 12_metrics-server — Cluster resource metrics
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Where:   Bastion
+# Creates: metrics-server Helm release in kube-system
+# Why:     Exposes CPU/memory metrics to Kubernetes
+# Used by: HorizontalPodAutoscaler (kubernetes/hpa.yaml)
+#          kubectl top nodes / kubectl top pods
+#
+# Without this: HPA cannot scale on CPU and kubectl top fails.
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# 13_kube-prometheus-stack — Monitoring & alerts
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Where:   Bastion
+# Creates: Prometheus + Grafana + Alertmanager (Helm) in namespace monitoring
+# Why:     Observe cluster/app health; dashboards; Slack alerts via Alertmanager
+# Used by: Operators (you) — Grafana dashboards, Prometheus queries, Alertmanager UI
+#
+# URLs:
+#   https://grafana.simsoliver.com
+#   https://prometheus.simsoliver.com
+#   https://alertmanager.simsoliver.com
+#
+# Slack webhook: set api_url in values.yaml on the bastion only (do not commit secrets).
+# See 13_kube-prometheus-stack/verify.txt
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# AFTER TERRAFORM — EASYSHOP APP (not a terraform stack)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Folder: kubernetes/
+# How:    Create Argo CD Application "easyshop" (UI) pointing at path kubernetes
+# Needs:  07 (ALB), 08 (DNS), 09 (Argo CD), 10+11 (MongoDB PVC), 12 (HPA metrics)
+#
+# Public URL: https://easyshop.simsoliver.com
+# Guide:      kubernetes/MANIFESTS.txt
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# QUICK MAP — “I need X → use stack Y”
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+#   Shared Terraform state .............. 00_state
+#   Network / subnets / NAT ............. 01_vpc
+#   Domain + HTTPS certificate .......... 02_route53_acm
+#   SSH into EC2 ........................ 03_keys (+ shared/terra-key)
+#   Kubernetes cluster .................. 04_eks
+#   Build & push Docker images .......... 05_jenkins
+#   kubectl / terraform on the cluster .. 06_bastion then SSH
+#   Public HTTPS via Ingress/ALB ........ 07_alb-controller
+#   Automatic DNS records ............... 08_external-dns
+#   GitOps deploy from GitHub ........... 09_argocd
+#   Persistent disks (EBS) .............. 10_ebs-csi-driver + 11_storage-class
+#   HPA / kubectl top ................... 12_metrics-server
+#   Grafana / Prometheus / alerts ....... 13_kube-prometheus-stack
+#   Easyshop web app .................... kubernetes/ via Argo CD (manual)
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# APPLY / DESTROY CHEAT SHEET
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Apply:   00 → 01 → 02 → 03 → 04 → 05 → 06   (PC)
+# then:    07 → 08 → 09 → 10 → 11 → 12 → 13   (bastion)
+# then:    create easyshop Application in Argo CD
+#
+# Destroy: delete easyshop → 13 → … → 07 (bastion) → 06 → … → 01 (PC) → 00_state
+# Details: TEARDOWN.txt / RESTORATION.txt

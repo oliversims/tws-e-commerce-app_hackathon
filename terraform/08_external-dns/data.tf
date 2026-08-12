@@ -1,4 +1,6 @@
 # 08_external-dns — data.tf
+# Upstream remote state: EKS (04) for OIDC/cluster name; Route53/ACM (02) for hosted zone.
+# main.tf uses these for the IRSA policy scope and Helm values (zone ID, txt owner).
 
 data "terraform_remote_state" "eks" {
   backend = "s3"

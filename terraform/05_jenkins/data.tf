@@ -1,5 +1,9 @@
 # 05_jenkins — data.tf
+# Upstream remote state + AMI lookup for the Jenkins EC2.
+# Reads 01_vpc (placement) and 03_keys (SSH key); Ubuntu 24.04 AMI from Canonical.
+# Apply from your PC after those stacks.
 
+# VPC ID and public subnet for the Jenkins instance.
 data "terraform_remote_state" "vpc" {
   backend = "s3"
 
@@ -10,6 +14,7 @@ data "terraform_remote_state" "vpc" {
   }
 }
 
+# Deployer key pair name for SSH into Jenkins.
 data "terraform_remote_state" "keys" {
   backend = "s3"
 
@@ -20,6 +25,7 @@ data "terraform_remote_state" "keys" {
   }
 }
 
+# Latest Ubuntu 24.04 amd64 AMI (Canonical).
 data "aws_ami" "os_image" {
   owners      = ["099720109477"]
   most_recent = true

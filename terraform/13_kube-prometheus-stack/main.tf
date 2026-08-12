@@ -1,5 +1,6 @@
 # 13_kube-prometheus-stack — main.tf
 # Deploys kube-prometheus-stack (Prometheus, Grafana, Alertmanager) via Helm.
+# Run on the bastion after 06_bastion; Ingress/DNS optional via stacks 07–08.
 
 # Helm release that installs Prometheus, Grafana, and Alertmanager in monitoring.
 module "kube_prometheus_stack" {

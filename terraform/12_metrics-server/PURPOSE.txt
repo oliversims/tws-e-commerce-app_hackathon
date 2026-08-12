@@ -1,0 +1,11 @@
+# 12_metrics-server — why this stack exists
+#
+# Exposes CPU/memory metrics to Kubernetes.
+#
+# Without it:
+#   - HorizontalPodAutoscaler cannot scale on CPU
+#   - kubectl top nodes / pods fails
+#
+# Run from: Bastion (after 06)
+# Creates:  metrics-server Helm release in kube-system
+# Used by:  kubernetes/hpa.yaml and kubectl top

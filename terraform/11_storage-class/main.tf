@@ -1,5 +1,6 @@
-# 12_storage-class — main.tf
+# 11_storage-class — main.tf
 # Creates the default Kubernetes StorageClass backed by the EBS CSI driver.
+# Run on the bastion after 10_ebs-csi-driver; PVCs then get EBS volumes automatically.
 
 # Default StorageClass — new PVCs automatically use EBS volumes via the CSI driver.
 resource "kubernetes_storage_class_v1" "ebs" {

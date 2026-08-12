@@ -1,0 +1,62 @@
+# =============================================================================
+# mongodb-statefulset.yaml
+# =============================================================================
+# WHAT: Runs the MongoDB database as a StatefulSet (1 replica).
+# WHY StatefulSet: good for databases — stable name (mongodb-0) + PVC attachment.
+#
+# EXAMPLE after apply:
+#   kubectl get pods -n easyshop
+#   → mongodb-0   1/1   Running
+#
+#   kubectl get statefulset mongodb -n easyshop
+#   → NAME      READY   AGE
+#     mongodb   1/1     5m
+#
+# Disk wiring example:
+#   volumes.claimName: mongodb-pvc          ← PVC from mongodb-pvc.yaml
+#   volumeMounts.mountPath: /data/db        ← MongoDB's data directory
+#   So: EBS volume ↔ /data/db inside mongodb-0
+#
+# Network wiring example:
+#   Pod label: app: mongodb
+#   Service (05) selector: app: mongodb
+#   → mongodb-service traffic reaches this pod
+#
+# serviceName: mongodb-service links StatefulSet identity to that Service.
+# =============================================================================
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongodb
+  namespace: easyshop
+spec:
+  serviceName: mongodb-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+        - name: mongodb
+          image: mongo:latest
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: mongodb-storage
+              mountPath: /data/db
+          resources:
+            requests:
+              memory: "256Mi"     # Example: scheduler needs at least this free
+              cpu: "250m"         # 250m = 0.25 CPU core
+            limits:
+              memory: "512Mi"     # Example: cannot use more than 512Mi RAM
+              cpu: "500m"
+      volumes:
+        - name: mongodb-storage
+          persistentVolumeClaim:
+            claimName: mongodb-pvc

@@ -1,5 +1,7 @@
 # 05_jenkins — main.tf
-# Jenkins CI server with a stable public IP.
+# Jenkins CI EC2 in a public subnet with a stable Elastic IP.
+# Apply from your PC after 01_vpc and 03_keys. Boot installs Jenkins/Docker/Trivy.
+# Outputs give SSH + UI URLs for operators on your PC.
 
 # Firewall: allows SSH, HTTP, HTTPS, and Jenkins UI (port 8080) from anywhere.
 resource "aws_security_group" "allow_user_to_connect" {
@@ -24,7 +26,7 @@ resource "aws_security_group" "allow_user_to_connect" {
   }
 
   egress {
-    description = " allow all outgoing traffic "
+    description = "allow all outgoing traffic"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -36,15 +38,14 @@ resource "aws_security_group" "allow_user_to_connect" {
   }
 }
 
-# Ubuntu EC2 instance in a public subnet — installs Jenkins, Docker, and Trivy on boot.
+# Ubuntu EC2. Uses saved Jenkins AMI if jenkins_ami_id is set; otherwise fresh Ubuntu + install script.
 resource "aws_instance" "testinstance" {
-  ami                    = data.aws_ami.os_image.id
+  ami                    = var.jenkins_ami_id != "" ? var.jenkins_ami_id : data.aws_ami.os_image.id
   instance_type          = var.instance_type
   key_name               = data.terraform_remote_state.keys.outputs.deployer_key_name
   vpc_security_group_ids = [aws_security_group.allow_user_to_connect.id]
-  subnet_id                   = data.terraform_remote_state.vpc.outputs.public_subnets[0]
-  user_data                   = file("${path.module}/../shared/scripts/install_tools.sh")
-  # user_data_replace_on_change = true
+  subnet_id              = data.terraform_remote_state.vpc.outputs.public_subnets[0]
+  user_data              = var.jenkins_ami_id != "" ? null : file("${path.module}/../shared/scripts/install_tools.sh")
 
   tags = {
     Name = "Jenkins-Automate"

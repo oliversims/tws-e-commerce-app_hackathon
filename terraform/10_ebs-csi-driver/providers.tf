@@ -1,4 +1,7 @@
-# 11_ebs-csi-driver — providers.tf
+# 10_ebs-csi-driver — providers.tf
+# Declares AWS, Helm, and Kubernetes providers; pins versions and S3 backend.
+# Helm/Kubernetes talk to the cluster via ~/.kube/config — run on the bastion.
+# S3 state key matches this folder name.
 
 terraform {
   required_version = ">= 1.5"
@@ -19,8 +22,8 @@ terraform {
   }
 
   backend "s3" {
-    bucket       = "tfstate-tws-us-east-1-681j1a"
-    key          = "11_ebs-csi-driver/terraform.tfstate"
+    bucket       = "tfstate-tws-us-east-1-m67t3m"
+    key          = "10_ebs-csi-driver/terraform.tfstate"
     region       = "us-east-1"
     use_lockfile = true
   }

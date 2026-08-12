@@ -1,6 +1,7 @@
 # 06_bastion — main.tf
 # Bastion jump host with IAM role for EKS — kubectl ready after SSH (no aws configure).
-# Apply after 04_eks.
+# Apply from your PC after 04_eks. Enables bastion workflow for stacks 07–13.
+# Uploads 00_state to S3 (see state_upload.tf) for bastion first-boot terraform.
 
 # Firewall: allows SSH, HTTP, and HTTPS from anywhere into the Bastion host.
 resource "aws_security_group" "allow_user_bastion" {
@@ -24,7 +25,7 @@ resource "aws_security_group" "allow_user_bastion" {
   }
 
   egress {
-    description = " allow all outgoing traffic "
+    description = "allow all outgoing traffic"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -50,6 +51,7 @@ resource "aws_iam_role" "bastion" {
   })
 }
 
+# Lets the bastion call eks:DescribeCluster (needed for aws eks update-kubeconfig).
 resource "aws_iam_role_policy" "bastion_eks_describe" {
   name = "eks-describe-cluster"
   role = aws_iam_role.bastion.id
@@ -64,7 +66,7 @@ resource "aws_iam_role_policy" "bastion_eks_describe" {
   })
 }
 
-# S3 + IAM for running terraform stacks 06-10 on the bastion.
+# S3 + IAM for running terraform stacks 07–13 on the bastion.
 resource "aws_iam_role_policy" "bastion_terraform_stacks" {
   name = "terraform-stacks-06-10"
   role = aws_iam_role.bastion.id
@@ -161,10 +163,10 @@ resource "aws_instance" "bastion_host" {
   iam_instance_profile        = aws_iam_instance_profile.bastion.name
   user_data_replace_on_change = true
   user_data = templatefile("${path.module}/../shared/scripts/bastion_user_data.sh", {
-    cluster_name        = data.terraform_remote_state.eks.outputs.eks_cluster_name
-    region              = local.region
-    state_bucket        = local.backend_bucket
-    state_key = local.state_key
+    cluster_name = data.terraform_remote_state.eks.outputs.eks_cluster_name
+    region       = local.region
+    state_bucket = local.backend_bucket
+    state_key    = local.state_key
   })
 
   tags = {
