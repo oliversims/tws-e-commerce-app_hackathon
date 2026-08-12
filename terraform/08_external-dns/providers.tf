@@ -1,6 +1,6 @@
 # 08_external-dns — providers.tf
-# Declares AWS, Helm, and Kubernetes providers; pins versions and S3 backend.
-# Helm/Kubernetes talk to the cluster via ~/.kube/config — run on the bastion.
+# Declares AWS and Helm providers; pins versions and S3 backend.
+# Helm talks to the cluster via ~/.kube/config — run on the bastion.
 # S3 backend key matches this folder (08_external-dns/...).
 
 terraform {
@@ -14,10 +14,6 @@ terraform {
     helm = {
       source  = "hashicorp/helm"
       version = ">= 2.17"
-    }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "2.37.1"
     }
   }
 
@@ -37,8 +33,4 @@ provider "helm" {
   kubernetes = {
     config_path = "~/.kube/config"
   }
-}
-
-provider "kubernetes" {
-  config_path = "~/.kube/config"
 }

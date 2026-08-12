@@ -53,15 +53,13 @@ module "external_dns" {
   repository = "https://kubernetes-sigs.github.io/external-dns/"
 
   app = {
-    name             = "external-dns"
-    description      = "external-dns"
-    version          = "1.15.0"
-    chart            = "external-dns"
-    force_update     = true
-    wait             = false
-    recreate_pods    = false
-    create_namespace = false
-    deploy           = 1
+    name          = "external-dns"
+    version       = "1.15.0"
+    chart         = "external-dns"
+    force_update  = true
+    wait          = false
+    recreate_pods = false
+    deploy        = 1
   }
 
   values = [templatefile("${path.module}/values.yaml", {
