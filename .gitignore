@@ -102,3 +102,7 @@ terraform/00_state/terraform.tfstate
 terraform/00_state/terraform.tfstate.backup
 terraform/05_jenkins/jenkins_ami_id.auto.tfvars
 
+# Local documentation (keep on disk, do not push)
+*.txt
+!**/requirements.txt
+

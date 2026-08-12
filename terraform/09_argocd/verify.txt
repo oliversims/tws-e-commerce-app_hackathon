@@ -1,9 +1,0 @@
-# 09_argocd — check deployment (run on bastion)
-
-kubectl get deploy -n argocd
-kubectl get pods -n argocd
-kubectl rollout status deploy/argocd-server -n argocd
-
-# UI: https://argocd.simsoliver.com
-# Username: admin
-kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d; echo
