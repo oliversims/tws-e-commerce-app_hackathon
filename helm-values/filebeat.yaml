@@ -1,3 +1,10 @@
+# =============================================================================
+# filebeat.yaml — Helm values for Filebeat (ship container logs → Elasticsearch)
+# =============================================================================
+# DaemonSet on each node. Inputs filter *easyshop*.log; output is elasticsearch-master.
+# Chart defaults below are mostly stock; comments call out project-critical bits.
+# =============================================================================
+
 ---
 daemonset:
   # Annotations to apply to the daemonset
@@ -6,7 +13,7 @@ daemonset:
   labels: {}
   affinity: {}
   # Include the daemonset
-  enabled: true
+  enabled: true                # Run Filebeat as a DaemonSet (one pod per node)
   # Extra environment variables for Filebeat container.
   envFrom: []
   # - configMapRef:
@@ -33,12 +40,13 @@ daemonset:
   hostNetworking: false
   # Allows you to add any config files in /usr/share/filebeat
   # such as filebeat.yml for daemonset
+  # --- Project logging config: only easyshop container logs → ES ---
   filebeatConfig:
     filebeat.yml: |
       filebeat.inputs:
       - type: container
         paths:
-          - /var/log/containers/*easyshop*.log
+          - /var/log/containers/*easyshop*.log   # Only EasyShop app logs
         processors:
         - add_kubernetes_metadata:
             host: ${NODE_NAME}

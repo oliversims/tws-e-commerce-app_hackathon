@@ -1,57 +1,40 @@
 # =============================================================================
 # ingress.yaml
 # =============================================================================
-# WHAT: Public HTTPS website entry: https://easyshop.simsoliver.com
-# WHY:  Expose the app on the internet with a real domain and TLS certificate.
-#
-# NEEDS (Terraform on bastion):
-#   07_alb-controller → turns this Ingress into an AWS Application Load Balancer
-#   08_external-dns   → creates Route 53 record for host: easyshop.simsoliver.com
-#   02_route53_acm    → ACM certificate ARN used in annotations below
-#
-# EXAMPLE end-to-end path:
-#   Browser
-#     → https://easyshop.simsoliver.com
-#     → Route 53 (DNS) points to ALB
-#     → ALB terminates TLS (ACM cert)
-#     → forwards HTTP to easyshop-service:80
-#     → Service sends to easyshop pod:3000
-#
-# EXAMPLE after sync:
-#   kubectl get ingress -n easyshop
-#   → HOST                      ADDRESS
-#     easyshop.simsoliver.com   k8s-easyshopapplb-xxxx.us-east-1.elb.amazonaws.com
-#
-# group.name example:
-#   easyshop-app-lb shared with Argo CD / Grafana Ingresses → one shared ALB (cheaper).
-#
-# If you recreate ACM in a new account/region, update certificate-arn.
+# This file exposes https://easyshop.simsoliver.com via AWS ALB + ACM TLS.
+# Needs: 07 ALB controller, 08 ExternalDNS, ACM ARN from 02_route53_acm.
+# group.name shares one ALB with Argo CD / Grafana Ingresses.
 # =============================================================================
 
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+# --- API & Kind ---
+apiVersion: networking.k8s.io/v1   # Networking API for Ingress
+kind: Ingress                      # HTTP(S) routing rules into the cluster
+
+# --- Identity ---
 metadata:
-  name: easyshop-ingress
-  namespace: easyshop
+  name: easyshop-ingress           # Name of this Ingress object
+  namespace: easyshop              # App namespace
   annotations:
-    alb.ingress.kubernetes.io/group.name: easyshop-app-lb
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/7ff4a82e-fc52-4eea-b3d3-f9b23dec1971
-    alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/backend-protocol: HTTP
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
-    alb.ingress.kubernetes.io/ssl-redirect: '443'   # Example: http://... redirects to https://
-    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/group.name: easyshop-app-lb          # Share one ALB with other apps
+    alb.ingress.kubernetes.io/scheme: internet-facing              # Public ALB (not internal)
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/7ff4a82e-fc52-4eea-b3d3-f9b23dec1971  # ACM TLS cert
+    alb.ingress.kubernetes.io/target-type: ip                      # Register pod IPs (not nodes)
+    alb.ingress.kubernetes.io/backend-protocol: HTTP               # ALB → pods speak HTTP
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'  # ALB listeners
+    alb.ingress.kubernetes.io/ssl-redirect: '443'                  # Force HTTP → HTTPS
+    kubernetes.io/ingress.class: alb                         # Legacy class annotation (chart/ALB)
+
+# --- Routing rules ---
 spec:
-  ingressClassName: alb
+  ingressClassName: alb            # Use the ALB IngressClass from stack 07
   rules:
-  - host: easyshop.simsoliver.com
+  - host: easyshop.simsoliver.com  # Public hostname (ExternalDNS creates Route 53 record)
     http:
       paths:
-      - path: /
-        pathType: Prefix              # Example: / , /api , /login all go to the app
+      - path: /                    # All paths under this host
+        pathType: Prefix           # Prefix match (/, /api, /login, …)
         backend:
           service:
-            name: easyshop-service
+            name: easyshop-service # Forward to the easyshop Service
             port:
-              number: 80
+              number: 80           # Service port (maps to pod 3000)

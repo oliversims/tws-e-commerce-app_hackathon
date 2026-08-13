@@ -1,25 +1,32 @@
-# kube-prometheus-stack — only overrides this stack needs.
-# Before apply on the bastion: set alertmanager Slack api_url (do not commit secrets).
+# =============================================================================
+# 13_kube-prometheus-stack / values.yaml
+# =============================================================================
+# Only overrides this stack needs. Exporters come from chart defaults.
+# Before apply on the bastion: set alertmanager Slack api_url (do not commit).
+# =============================================================================
 
+# --- Alertmanager: routes critical alerts to Slack; UI via ALB ---
 alertmanager:
   enabled: true
+  # Routing tree and Slack receiver
   config:
     route:
-      group_by: ['namespace']
-      group_wait: 30s
-      group_interval: 5m
-      repeat_interval: 12h
+      group_by: ['namespace']      # Group alerts by namespace
+      group_wait: 30s              # Wait before first notification in a group
+      group_interval: 5m           # Wait before re-notifying a group
+      repeat_interval: 12h         # Re-send if still firing
       receiver: 'slack-notification'
       routes:
         - receiver: 'slack-notification'
           matchers:
-            - severity = "critical"
+            - severity = "critical"  # Only critical alerts to this route
     receivers:
       - name: 'slack-notification'
         slack_configs:
-          - api_url: '' # Set on bastion only — do not commit Slack webhook URLs
-            channel: '#alerts'
-            send_resolved: true
+          - api_url: ''            # Set on bastion only — do not commit webhook URLs
+            channel: '#alerts'     # Slack channel name
+            send_resolved: true    # Also notify when alerts clear
+  # Public HTTPS UI: https://alertmanager.simsoliver.com
   ingress:
     enabled: true
     ingressClassName: alb
@@ -37,8 +44,10 @@ alertmanager:
       alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
       alb.ingress.kubernetes.io/ssl-redirect: '443'
 
+# --- Grafana: dashboards UI; queries Prometheus (chart default datasource) ---
 grafana:
   enabled: true
+  # Public HTTPS UI: https://grafana.simsoliver.com
   ingress:
     enabled: true
     ingressClassName: alb
@@ -53,8 +62,10 @@ grafana:
       alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
       alb.ingress.kubernetes.io/ssl-redirect: '443'
 
+# --- Prometheus: scrapes exporters, stores metrics, alerts → Alertmanager ---
 prometheus:
   enabled: true
+  # Public HTTPS UI: https://prometheus.simsoliver.com
   ingress:
     enabled: true
     ingressClassName: alb

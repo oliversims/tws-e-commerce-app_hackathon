@@ -1,37 +1,23 @@
 # =============================================================================
 # mongodb-service.yaml
 # =============================================================================
-# WHAT: A stable network name for MongoDB pods inside the cluster.
-# WHY:  Pod IPs change when pods restart. The Service name does not.
-#
-# EXAMPLE DNS names (all resolve to this Service):
-#   mongodb-service                      (from inside namespace easyshop)
-#   mongodb-service.easyshop             (from another namespace)
-#   mongodb-service.easyshop.svc.cluster.local
-#
-# Who uses it:
-#   ConfigMap (03):  MONGODB_URI=mongodb://mongodb-service:27017/easyshop
-#   Migration (11):  same URI
-#   App pods (07):   connect through that URI
-#
-# HOW traffic is routed:
-#   App pod → mongodb-service:27017 → kube-proxy → MongoDB pod:27017
-#
-# selector app: mongodb MUST match labels on StatefulSet pods (06).
-#   If labels don't match → Service has no endpoints → connection fails.
-#
-#   kubectl get endpoints mongodb-service -n easyshop
-#   → should list the mongodb pod IP
+# This file gives MongoDB a stable DNS name inside the cluster.
+# ConfigMap MONGODB_URI points here: mongodb://mongodb-service:27017/easyshop
 # =============================================================================
 
-apiVersion: v1
-kind: Service
+# --- API & Kind ---
+apiVersion: v1                     # Core API group
+kind: Service                      # Stable network endpoint for MongoDB pods
+
+# --- Identity ---
 metadata:
-  name: mongodb-service
-  namespace: easyshop
+  name: mongodb-service            # DNS used by app + migration Job
+  namespace: easyshop              # App namespace
+
+# --- Networking ---
 spec:
   ports:
-    - port: 27017                 # Call this port on the Service
-      targetPort: 27017           # Forward to this port on the pod
+    - port: 27017                  # Port clients call on the Service
+      targetPort: 27017            # Port on the MongoDB container
   selector:
-    app: mongodb                  # Send traffic to pods labeled app=mongodb
+    app: mongodb                   # Must match StatefulSet pod labels

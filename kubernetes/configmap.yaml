@@ -1,36 +1,23 @@
 # =============================================================================
 # configmap.yaml
 # =============================================================================
-# WHAT: Non-secret settings for the easyshop app (plain env vars).
-# WHY:  Change URLs/mode without rebuilding the Docker image.
-#       Secrets (passwords/tokens) do NOT belong here → see secrets.yaml.
-#
-# HOW pods get these values:
-#   Deployment (07) has envFrom.configMapRef → every key below becomes an env var.
-#
-# EXAMPLE inside an easyshop pod:
-#   echo $MONGODB_URI
-#   → mongodb://mongodb-service:27017/easyshop
-#
-#   echo $NEXT_PUBLIC_API_URL
-#   → https://easyshop.simsoliver.com/api
-#
-# Meaning of each key:
-#   MONGODB_URI         App connects to MongoDB Service (05) on the cluster network
-#   NODE_ENV            Run Next.js in production mode
-#   NEXT_PUBLIC_API_URL Browser-facing API URL (must match your real domain)
-#   NEXTAUTH_URL        Auth redirects/callbacks (must match Ingress host)
-#
-# If you change the domain, update NEXT_PUBLIC_API_URL and NEXTAUTH_URL here.
+# This file stores non-secret app settings as key/value pairs.
+# The Deployment loads these as environment variables (envFrom + env).
+# Secrets (passwords/tokens) do NOT belong here → see secrets.yaml.
 # =============================================================================
 
-apiVersion: v1
-kind: ConfigMap
+# --- API & Kind ---
+apiVersion: v1                 # Core API group
+kind: ConfigMap                # Non-sensitive configuration data
+
+# --- Identity ---
 metadata:
-  name: easyshop-config
-  namespace: easyshop
+  name: easyshop-config        # Referenced by Deployment as configMapRef / configMapKeyRef
+  namespace: easyshop          # Must match the easyshop Namespace
+
+# --- Data (plain strings → pod env vars) ---
 data:
-  MONGODB_URI: "mongodb://mongodb-service:27017/easyshop"
-  NODE_ENV: "production"
-  NEXT_PUBLIC_API_URL: "https://easyshop.simsoliver.com/api"
-  NEXTAUTH_URL: "https://easyshop.simsoliver.com/"
+  MONGODB_URI: "mongodb://mongodb-service:27017/easyshop"   # App DB URL (cluster DNS to Mongo Service)
+  NODE_ENV: "production"                                    # Next.js production mode
+  NEXT_PUBLIC_API_URL: "https://easyshop.simsoliver.com/api"  # Browser-facing API base URL
+  NEXTAUTH_URL: "https://easyshop.simsoliver.com/"          # Auth callbacks/redirects (must match Ingress host)

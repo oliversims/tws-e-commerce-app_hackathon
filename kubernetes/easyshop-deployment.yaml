@@ -1,97 +1,103 @@
 # =============================================================================
 # easyshop-deployment.yaml
 # =============================================================================
-# WHAT: Runs the Next.js easyshop website (stateless app pods).
-# WHY Deployment: you want N identical copies; if one dies, Kubernetes replaces it.
-#
-# EXAMPLE after apply:
-#   kubectl get deploy,pods -n easyshop -l app=easyshop
-#   → deployment.apps/easyshop   2/2
-#   → pod/easyshop-aaaa-xxxx     1/1 Running
-#   → pod/easyshop-aaaa-yyyy     1/1 Running
-#
-# Image example:
-#   simsoliver/easyshop-app:6
-#   └── Docker Hub repo          └── tag (often Jenkins BUILD_NUMBER)
-#
-# Env example inside a pod:
-#   envFrom ConfigMap + Secret loads MONGODB_URI, NODE_ENV, JWT_SECRET, etc.
-#   kubectl exec -n easyshop deploy/easyshop -- printenv MONGODB_URI
-#   → mongodb://mongodb-service:27017/easyshop
-#
-# Probe examples (HTTP GET / on port 3000):
-#   startupProbe   — "still starting?" wait before treating as dead
-#   readinessProbe — "ready for traffic?" if fail → removed from Service endpoints
-#   livenessProbe  — "still alive?" if fail → container restarted
-#
-# HPA (10) may change replicas from 2 up to 5 based on CPU.
+# This file tells Kubernetes: "Run the easyshop Next.js website as pods"
+# A Deployment keeps N copies running — if one crashes, K8s auto-restarts it.
 # =============================================================================
 
-apiVersion: apps/v1
-kind: Deployment
+# --- API & Kind ---
+apiVersion: apps/v1        # Use the "apps" API group, version 1 (standard for Deployments)
+kind: Deployment           # We're creating a Deployment (not a Pod, Service, etc.)
+
+# --- Identity ---
 metadata:
-  name: easyshop
-  namespace: easyshop
+  name: easyshop           # Name of this Deployment object in Kubernetes
+  namespace: easyshop      # Isolated namespace — keeps easyshop resources separate from others
+
+# --- Desired State ---
 spec:
-  replicas: 2
+  replicas: 2              # Run 2 identical pods at all times (HPA can scale this to 5)
+
+  # --- Pod Selector ---
   selector:
     matchLabels:
-      app: easyshop
+      app: easyshop        # This Deployment manages any pod that has label "app=easyshop"
+
+  # --- Pod Template (blueprint for each pod) ---
   template:
     metadata:
       labels:
-        app: easyshop
+        app: easyshop      # Every pod created gets this label (must match selector above)
+
     spec:
       containers:
-        - name: easyshop
-          image: simsoliver/easyshop-app:1
-          imagePullPolicy: Always
+        - name: easyshop                      # Name of the container inside the pod
+          image: simsoliver/easyshop-app:1    # Docker image to run (Docker Hub repo:tag)
+          imagePullPolicy: Always             # Always pull the latest image on pod start (never use cached)
+
+          # --- Exposed Port ---
           ports:
-            - containerPort: 3000
+            - containerPort: 3000             # The Next.js app listens on port 3000 inside the container
+
+          # --- Environment Variables (bulk load) ---
           envFrom:
             - configMapRef:
-                name: easyshop-config      # From 03 — all keys become env vars
+                name: easyshop-config         # Load ALL keys from this ConfigMap as env vars (e.g. MONGODB_URI, NODE_ENV)
             - secretRef:
-                name: easyshop-secrets     # From 04 — all keys become env vars
+                name: easyshop-secrets        # Load ALL keys from this Secret as env vars (e.g. JWT_SECRET)
+
+          # --- Environment Variables (explicit, one by one) ---
+          # These are loaded individually for clarity — you can see exactly where each value comes from
           env:
-            # Explicit auth-related bindings (clear source of each secret/config)
-            - name: NEXTAUTH_URL
+            - name: NEXTAUTH_URL              # The public URL of the app (used by NextAuth for redirects)
               valueFrom:
                 configMapKeyRef:
-                  name: easyshop-config
-                  key: NEXTAUTH_URL
-            - name: NEXTAUTH_SECRET
+                  name: easyshop-config       # Source: ConfigMap named "easyshop-config"
+                  key: NEXTAUTH_URL           # Specific key inside that ConfigMap
+
+            - name: NEXTAUTH_SECRET           # Secret used by NextAuth to sign/encrypt session tokens
               valueFrom:
                 secretKeyRef:
-                  name: easyshop-secrets
-                  key: NEXTAUTH_SECRET
-            - name: JWT_SECRET
+                  name: easyshop-secrets      # Source: Secret named "easyshop-secrets"
+                  key: NEXTAUTH_SECRET        # Specific key inside that Secret
+
+            - name: JWT_SECRET                # Secret used to sign JWT tokens for auth
               valueFrom:
                 secretKeyRef:
-                  name: easyshop-secrets
-                  key: JWT_SECRET
+                  name: easyshop-secrets      # Source: same Secret
+                  key: JWT_SECRET             # Specific key inside that Secret
+
+          # --- Resource Limits ---
           resources:
             requests:
-              memory: "256Mi"
-              cpu: "200m"
+              memory: "256Mi"   # Minimum memory Kubernetes guarantees this container (256 MB)
+              cpu: "200m"       # Minimum CPU guaranteed (200 millicores = 0.2 of a CPU core)
             limits:
-              memory: "512Mi"
-              cpu: "500m"
-          startupProbe:
+              memory: "512Mi"   # Maximum memory allowed — if exceeded, container is killed (OOMKilled)
+              cpu: "500m"       # Maximum CPU allowed (500 millicores = 0.5 of a CPU core)
+
+          # --- Health Probes ---
+          # Kubernetes uses these to know if the app is starting, ready, or alive
+
+          startupProbe:                       # "Is the app done starting up?"
+            httpGet:
+              path: /                         # Send HTTP GET to "/" on port 3000
+              port: 3000
+            failureThreshold: 30             # Allow up to 30 failures before giving up
+            periodSeconds: 10                # Check every 10 seconds → max 30×10 = 5 min to start
+
+          readinessProbe:                     # "Is the app ready to receive traffic?"
             httpGet:
               path: /
               port: 3000
-            failureThreshold: 30          # Example: 30 × 10s ≈ 5 min max startup
-            periodSeconds: 10
-          readinessProbe:
+            initialDelaySeconds: 20          # Wait 20s after container starts before first check
+            periodSeconds: 15                # Then check every 15 seconds
+            # If this fails → pod is removed from the Service's load balancer (no traffic sent to it)
+
+          livenessProbe:                      # "Is the app still alive and not frozen/crashed?"
             httpGet:
               path: /
               port: 3000
-            initialDelaySeconds: 20
-            periodSeconds: 15
-          livenessProbe:
-            httpGet:
-              path: /
-              port: 3000
-            initialDelaySeconds: 25
-            periodSeconds: 20
+            initialDelaySeconds: 25          # Wait 25s before first check
+            periodSeconds: 20                # Then check every 20 seconds
+            # If this fails → Kubernetes restarts the container automatically

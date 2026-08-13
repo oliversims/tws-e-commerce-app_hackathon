@@ -1,10 +1,18 @@
----
-elasticsearchHosts: "https://elasticsearch-master:9200"
-elasticsearchCertificateSecret: elasticsearch-master-certs
-elasticsearchCertificateAuthoritiesFile: ca.crt
-elasticsearchCredentialSecret: elasticsearch-master-credentials
+# =============================================================================
+# kibana.yaml — Helm values for Kibana (UI for Elasticsearch)
+# =============================================================================
+# Connects to elasticsearch-master Service with TLS certs/credentials from Secrets.
+# Chart defaults below are mostly stock; comments call out project-critical bits.
+# =============================================================================
 
-replicas: 1
+---
+# --- Elasticsearch connection ---
+elasticsearchHosts: "https://elasticsearch-master:9200"   # In-cluster ES Service URL
+elasticsearchCertificateSecret: elasticsearch-master-certs  # Secret with CA/certs
+elasticsearchCertificateAuthoritiesFile: ca.crt             # CA file name inside that secret
+elasticsearchCredentialSecret: elasticsearch-master-credentials  # Username/password secret
+
+replicas: 1                    # Single Kibana pod for this project
 
 # Extra environment variables to append to this nodeGroup
 # This will be appended to the current 'env:' key. You can use any of the kubernetes env

@@ -1,62 +1,53 @@
 # =============================================================================
 # mongodb-statefulset.yaml
 # =============================================================================
-# WHAT: Runs the MongoDB database as a StatefulSet (1 replica).
-# WHY StatefulSet: good for databases — stable name (mongodb-0) + PVC attachment.
-#
-# EXAMPLE after apply:
-#   kubectl get pods -n easyshop
-#   → mongodb-0   1/1   Running
-#
-#   kubectl get statefulset mongodb -n easyshop
-#   → NAME      READY   AGE
-#     mongodb   1/1     5m
-#
-# Disk wiring example:
-#   volumes.claimName: mongodb-pvc          ← PVC from mongodb-pvc.yaml
-#   volumeMounts.mountPath: /data/db        ← MongoDB's data directory
-#   So: EBS volume ↔ /data/db inside mongodb-0
-#
-# Network wiring example:
-#   Pod label: app: mongodb
-#   Service (05) selector: app: mongodb
-#   → mongodb-service traffic reaches this pod
-#
-# serviceName: mongodb-service links StatefulSet identity to that Service.
+# This file runs MongoDB as a StatefulSet (stable name mongodb-0 + PVC).
+# Mounts mongodb-pvc at /data/db. Service selector app=mongodb must match labels.
 # =============================================================================
 
-apiVersion: apps/v1
-kind: StatefulSet
+# --- API & Kind ---
+apiVersion: apps/v1                # Apps API for StatefulSets
+kind: StatefulSet                  # Ordered, stable identity for stateful apps
+
+# --- Identity ---
 metadata:
-  name: mongodb
-  namespace: easyshop
+  name: mongodb                    # StatefulSet name → pod mongodb-0
+  namespace: easyshop              # App namespace
+
+# --- Desired state ---
 spec:
-  serviceName: mongodb-service
-  replicas: 1
+  serviceName: mongodb-service     # Headless/identity link to the MongoDB Service
+  replicas: 1                      # Single MongoDB pod for this project
+
+  # --- Pod selector ---
   selector:
     matchLabels:
-      app: mongodb
+      app: mongodb                 # Manages pods with this label
+
+  # --- Pod template ---
   template:
     metadata:
       labels:
-        app: mongodb
+        app: mongodb               # Must match selector + Service selector
     spec:
       containers:
-        - name: mongodb
-          image: mongo:latest
+        - name: mongodb            # Container name inside the pod
+          image: mongo:latest      # Official MongoDB image
           ports:
-            - containerPort: 27017
+            - containerPort: 27017 # MongoDB listens here
           volumeMounts:
             - name: mongodb-storage
-              mountPath: /data/db
+              mountPath: /data/db  # MongoDB data directory on the PVC
           resources:
             requests:
-              memory: "256Mi"     # Example: scheduler needs at least this free
-              cpu: "250m"         # 250m = 0.25 CPU core
+              memory: "256Mi"      # Minimum memory guaranteed
+              cpu: "250m"          # Minimum CPU (0.25 core)
             limits:
-              memory: "512Mi"     # Example: cannot use more than 512Mi RAM
-              cpu: "500m"
+              memory: "512Mi"      # Max memory before OOMKill
+              cpu: "500m"          # Max CPU (0.5 core)
+
+      # --- Volume: bind the PVC ---
       volumes:
-        - name: mongodb-storage
+        - name: mongodb-storage    # Volume name referenced by volumeMounts
           persistentVolumeClaim:
-            claimName: mongodb-pvc
+            claimName: mongodb-pvc # Must match mongodb-pvc.yaml metadata.name

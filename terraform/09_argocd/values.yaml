@@ -1,27 +1,35 @@
-# argo-cd — only overrides this stack needs (ALB Ingress + insecure behind TLS).
+# =============================================================================
+# 09_argocd / values.yaml  (Helm template — ${serverReplicas} from Terraform)
+# =============================================================================
+# Overrides for Argo CD UI behind ALB + TLS (server.insecure: TLS ends at ALB).
+# Release name my-argo-cd → Deployments like my-argo-cd-argocd-server.
+# =============================================================================
 
+# --- Global ---
 global:
-  domain: argocd.simsoliver.com
+  domain: argocd.simsoliver.com   # Public hostname for Argo CD
 
+# --- Server config ---
 configs:
   params:
-    server.insecure: true
+    server.insecure: true         # HTTP inside cluster; ALB terminates HTTPS
 
+# --- Argo CD server + Ingress ---
 server:
-  replicas: ${serverReplicas}
+  replicas: ${serverReplicas}     # Number of argocd-server pods
   ingress:
-    enabled: true
-    controller: aws
-    ingressClassName: alb
+    enabled: true                 # Create Ingress for the UI
+    controller: aws               # Use AWS ALB Ingress support in the chart
+    ingressClassName: alb         # IngressClass from stack 07
     hostname: argocd.simsoliver.com
     annotations:
       alb.ingress.kubernetes.io/scheme: internet-facing
       alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/7ff4a82e-fc52-4eea-b3d3-f9b23dec1971
-      alb.ingress.kubernetes.io/group.name: easyshop-app-lb
+      alb.ingress.kubernetes.io/group.name: easyshop-app-lb   # Shared ALB with other apps
       alb.ingress.kubernetes.io/target-type: ip
       alb.ingress.kubernetes.io/backend-protocol: HTTP
       alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
       alb.ingress.kubernetes.io/ssl-redirect: '443'
     aws:
-      backendProtocolVersion: GRPC
-      serviceType: ClusterIP
+      backendProtocolVersion: GRPC   # ALB target group protocol version for Argo CD
+      serviceType: ClusterIP         # Service type behind the Ingress

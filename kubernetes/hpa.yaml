@@ -1,42 +1,33 @@
 # =============================================================================
 # hpa.yaml
 # =============================================================================
-# WHAT: HorizontalPodAutoscaler — auto-changes easyshop replica count.
-# WHY:  More traffic / CPU → add pods; quiet → scale back down (saves resources).
-#
-# NEEDS: terraform 12_metrics-server
-#   Without metrics-server, CPU metrics are missing and HPA cannot scale properly.
-#
-# EXAMPLE behavior:
-#   Deployment starts at replicas: 2 (from 07)
-#   Average CPU across pods rises above 70%
-#     → HPA increases replicas to 3, then 4, up to max 5
-#   CPU drops
-#     → HPA decreases back toward min 2
-#
-#   kubectl get hpa -n easyshop
-#   → NAME           REFERENCE           TARGETS        MINPODS   MAXPODS   REPLICAS
-#     easyshop-hpa   Deployment/easyshop cpu: 14%/70%   2         5         2
-#
-#   TARGETS "cpu: 14%/70%" means current 14%, goal 70%.
+# This file auto-scales the easyshop Deployment by CPU usage.
+# Needs: terraform 12_metrics-server (provides CPU metrics for HPA).
 # =============================================================================
 
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
+# --- API & Kind ---
+apiVersion: autoscaling/v2         # HPA API version 2 (supports resource metrics)
+kind: HorizontalPodAutoscaler      # Scales Deployment replicas up/down
+
+# --- Identity ---
 metadata:
-  name: easyshop-hpa
-  namespace: easyshop
+  name: easyshop-hpa               # Name of this HPA object
+  namespace: easyshop              # Same namespace as the Deployment
+
+# --- Scale target & bounds ---
 spec:
   scaleTargetRef:
-    apiVersion: apps/v1
+    apiVersion: apps/v1            # Target is a Deployment
     kind: Deployment
-    name: easyshop
-  minReplicas: 2
-  maxReplicas: 5
+    name: easyshop                 # Must match Deployment metadata.name
+  minReplicas: 2                   # Never scale below 2 pods
+  maxReplicas: 5                   # Never scale above 5 pods
+
+  # --- Metric: keep average CPU around 70% ---
   metrics:
-    - type: Resource
+    - type: Resource               # Built-in resource metric (CPU/memory)
       resource:
-        name: cpu
+        name: cpu                  # Scale on CPU utilization
         target:
-          type: Utilization
-          averageUtilization: 70
+          type: Utilization        # Percentage of requests
+          averageUtilization: 70   # Target ~70% of requested CPU across pods

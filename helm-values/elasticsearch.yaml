@@ -1,6 +1,15 @@
+# =============================================================================
+# elasticsearch.yaml — Helm values for Elastic Search (logging stack)
+# =============================================================================
+# Deploys a 1-node Elasticsearch master/data group. Persistence uses a PVC
+# (volumeClaimTemplate). Prefer storageClassName: ebs-storage-class on EKS.
+# Chart defaults below are mostly stock; comments call out project-critical bits.
+# =============================================================================
+
 ---
-clusterName: "elasticsearch"
-nodeGroup: "master"
+# --- Cluster identity ---
+clusterName: "elasticsearch"   # ES cluster name
+nodeGroup: "master"            # This node group name (master/data combined below)
 
 # The service that non master groups will try to connect to when joining the cluster
 # This should be set to clusterName + "-" + nodeGroup for your master group
@@ -21,8 +30,8 @@ roles:
   - remote_cluster_client
   - transform
 
-replicas: 1
-minimumMasterNodes: 1
+replicas: 1                    # Single-node cluster for this project
+minimumMasterNodes: 1          # Quorum for master election (1 with replicas: 1)
 
 esMajorVersion: ""
 
@@ -105,11 +114,13 @@ initResources: {}
 
 networkHost: "0.0.0.0"
 
+# --- Persistent volume for ES data (PVC via StatefulSet) ---
 volumeClaimTemplate:
-  accessModes: ["ReadWriteOnce"]
+  accessModes: ["ReadWriteOnce"]   # One node mounts read-write (EBS)
+  # storageClassName: ebs-storage-class   # Uncomment to pin EKS default SC
   resources:
     requests:
-      storage: 15Gi
+      storage: 15Gi                # Disk size for Elasticsearch data
 
 rbac:
   create: false
@@ -136,8 +147,9 @@ podSecurityPolicy:
       - persistentVolumeClaim
       - emptyDir
 
+# --- Enable PVC-backed persistence (uses volumeClaimTemplate above) ---
 persistence:
-  enabled: true
+  enabled: true                # Keep ES data across pod restarts
   labels:
     # Add default labels for the volumeClaimTemplate of the StatefulSet
     enabled: false

@@ -82,7 +82,7 @@ module "eks" {
   # SPOT worker nodes — 2 nodes by default (spread across AZs), scales up to 3.
   eks_managed_node_groups = {
     tws-demo-ng = {
-      min_size     = 2
+      min_size     = 1
       max_size     = 3
       desired_size = 2
 

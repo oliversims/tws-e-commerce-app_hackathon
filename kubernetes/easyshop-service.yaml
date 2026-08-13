@@ -1,38 +1,26 @@
 # =============================================================================
 # easyshop-service.yaml
 # =============================================================================
-# WHAT: Stable virtual IP / DNS name in front of easyshop pods.
-# WHY:  Ingress and clients should call a Service, not a changing pod IP.
-#
-# EXAMPLE DNS:
-#   easyshop-service.easyshop.svc.cluster.local:80
-#
-# EXAMPLE port mapping:
-#   Client/Ingress calls :80
-#        ↓
-#   Service forwards to pod :3000  (targetPort)
-#
-#   So: browser → ALB → Service:80 → pod:3000 → Next.js
-#
-# type NodePort example (debug only):
-#   Also opens port 30000 on every worker node.
-#   http://<node-private-ip>:30000  (usually from inside VPC / bastion)
-#
-# selector app: easyshop must match Deployment labels (07).
-#   kubectl get endpoints easyshop-service -n easyshop
-#   → should list both easyshop pod IPs when healthy
+# This file creates a stable virtual IP / DNS name in front of easyshop pods.
+# Ingress calls the Service; the Service load-balances to pods labeled app=easyshop.
+# Path: browser → ALB → Service:80 → pod:3000
 # =============================================================================
 
-apiVersion: v1
-kind: Service
+# --- API & Kind ---
+apiVersion: v1                 # Core API group
+kind: Service                  # Stable network endpoint for a set of pods
+
+# --- Identity ---
 metadata:
-  name: easyshop-service
-  namespace: easyshop
+  name: easyshop-service       # DNS: easyshop-service.easyshop.svc.cluster.local
+  namespace: easyshop          # Must match the easyshop Namespace
+
+# --- Networking ---
 spec:
-  type: NodePort
+  type: NodePort               # Also opens a port on each node (debug); Ingress still uses ClusterIP path via ALB
   ports:
-    - port: 80
-      targetPort: 3000
-      nodePort: 30000
+    - port: 80                 # Port clients/Ingress call on the Service
+      targetPort: 3000         # Port on the easyshop container (Next.js)
+      nodePort: 30000          # Fixed node port for optional direct access (VPC/bastion)
   selector:
-    app: easyshop
+    app: easyshop              # Must match Deployment pod labels

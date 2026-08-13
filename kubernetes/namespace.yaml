@@ -1,26 +1,18 @@
 # =============================================================================
 # namespace.yaml
 # =============================================================================
-# WHAT: Creates a Kubernetes "folder" named easyshop for all app resources.
-# WHY:  Isolate easyshop from other namespaces (argocd, monitoring, kube-system).
-#
-# EXAMPLE:
-#   After apply:
-#     kubectl get ns easyshop
-#   → NAME       STATUS   AGE
-#     easyshop   Active   1m
-#
-#   Everything else in this folder uses:
-#     namespace: easyshop
-#   so objects land here, not in "default".
-#
+# This file tells Kubernetes: "Create an isolated folder named easyshop"
+# All other manifests in this folder set namespace: easyshop so they land here.
 # Apply this file FIRST.
 # =============================================================================
 
-apiVersion: v1
-kind: Namespace
+# --- API & Kind ---
+apiVersion: v1                 # Core API group (Namespaces live in v1)
+kind: Namespace                # A Namespace isolates names and resources
+
+# --- Identity ---
 metadata:
-  name: easyshop
+  name: easyshop               # The namespace name (kubectl get ns easyshop)
   labels:
-    name: easyshop              # Example filter: kubectl get ns -l name=easyshop
-    environment: production
+    name: easyshop             # Label for filtering: kubectl get ns -l name=easyshop
+    environment: production    # Optional label describing the environment

@@ -1,28 +1,38 @@
-# external-dns — syncs Ingress hostnames to Route 53 (simsoliver.com zone)
+# =============================================================================
+# 08_external-dns / values.yaml  (Helm template — ${...} filled by Terraform)
+# =============================================================================
+# Syncs Ingress hostnames to Route 53 (simsoliver.com public zone).
+# =============================================================================
 
+# --- DNS provider ---
 provider:
-  name: aws
+  name: aws                    # Use AWS Route 53
 
+# --- AWS region for the API ---
 env:
   - name: AWS_DEFAULT_REGION
-    value: ${region}
+    value: ${region}           # e.g. us-east-1
 
+# --- Only manage records under this domain ---
 domainFilters:
-  - ${domain_name}
+  - ${domain_name}             # e.g. simsoliver.com
 
-policy: sync
-registry: txt
-txtOwnerId: ${txt_owner_id}
+policy: sync                   # Create/update/delete records to match Ingresses
+registry: txt                  # Track ownership with TXT records
+txtOwnerId: ${txt_owner_id}    # Unique owner id so multiple ExternalDNS don't clash
 
+# --- Service account + IRSA ---
 serviceAccount:
   create: true
   name: external-dns
   annotations:
-    eks.amazonaws.com/role-arn: ${role_arn}
+    eks.amazonaws.com/role-arn: ${role_arn}   # IAM role for Route 53 permissions
 
+# --- What to watch ---
 sources:
-  - ingress
+  - ingress                    # Only sync from Ingress resources
 
+# --- Extra CLI flags ---
 extraArgs:
-  - --aws-zone-type=public
-  - --zone-id-filter=${hosted_zone_id}
+  - --aws-zone-type=public     # Public hosted zones only
+  - --zone-id-filter=${hosted_zone_id}  # Limit to this Route 53 zone id

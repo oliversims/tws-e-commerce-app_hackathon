@@ -1,55 +1,67 @@
-version: '3.8'
+# =============================================================================
+# docker-compose.yml
+# =============================================================================
+# Local dev stack: MongoDB → migration Job → Next.js app (same idea as K8s).
+# Run: docker compose up --build
+# =============================================================================
+
+version: '3.8'                     # Compose file format version
 
 services:
+  # --- MongoDB database ---
   mongodb:
-    image: mongo:latest
+    image: mongo:latest            # Official MongoDB image
     container_name: easyshop-mongodb
     ports:
-      - "27017:27017"
+      - "27017:27017"              # Host:container — local apps can use localhost:27017
     volumes:
-      - mongodb_data:/data/db
+      - mongodb_data:/data/db      # Named volume so data survives container restarts
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]  # Ready when ping works
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 30s            # Ignore failures during first 30s of boot
     networks:
       - easyshop-network
 
+  # --- One-shot DB migration (runs after Mongo is healthy) ---
   migration:
     build:
-      context: .
+      context: .                   # Build context = repo root
       dockerfile: scripts/Dockerfile.migration
     container_name: easyshop-migration
     env_file:
-      - .env.local
+      - .env.local                 # Local secrets/config (not committed)
     depends_on:
       mongodb:
-        condition: service_healthy
+        condition: service_healthy # Wait until Mongo healthcheck passes
     networks:
       - easyshop-network
 
+  # --- Next.js easyshop app (starts after migration succeeds) ---
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: easyshop
     ports:
-      - "3000:3000"
+      - "3000:3000"                # App UI/API on http://localhost:3000
     env_file:
       - .env.local
     depends_on:
       migration:
-        condition: service_completed_successfully
+        condition: service_completed_successfully  # Migration must exit 0 first
     networks:
       - easyshop-network
-    restart: unless-stopped
+    restart: unless-stopped        # Restart on crash unless you stop it
 
+# --- Shared network ---
 networks:
   easyshop-network:
     name: easyshop-network
 
+# --- Persistent volume for Mongo data ---
 volumes:
   mongodb_data:
     name: mongodb_data

@@ -1,3 +1,9 @@
-# metrics-server — required on EKS for HPA and kubectl top
+# =============================================================================
+# 12_metrics-server / values.yaml
+# =============================================================================
+# Required on EKS for HPA and kubectl top (kubelet TLS quirk needs the flag below).
+# =============================================================================
+
+# --- Extra args passed to metrics-server ---
 args:
-  - --kubelet-insecure-tls
+  - --kubelet-insecure-tls   # Allow scraping kubelets with self-signed certs on EKS

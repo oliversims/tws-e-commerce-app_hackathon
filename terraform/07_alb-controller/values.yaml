@@ -1,16 +1,23 @@
-# aws-load-balancer-controller — only overrides this stack needs.
-# Chart defaults cover the rest (RBAC, IngressClass alb, etc.).
+# =============================================================================
+# 07_alb-controller / values.yaml  (Helm template — ${...} filled by Terraform)
+# =============================================================================
+# Overrides for AWS Load Balancer Controller. Chart defaults cover RBAC, etc.
+# =============================================================================
 
-replicaCount: ${replicaCount}
+# --- Replicas ---
+replicaCount: ${replicaCount}   # How many controller pods to run
 
+# --- Container image ---
 image:
-  repository: public.ecr.aws/eks/aws-load-balancer-controller
-  tag: v2.13.3
+  repository: public.ecr.aws/eks/aws-load-balancer-controller  # Official AWS ECR image
+  tag: v2.13.3                                                 # Controller version
 
-clusterName: "${clusterName}"
-region: "${region}"
-vpcId: "${vpcId}"
+# --- Cluster identity (from Terraform remote state) ---
+clusterName: "${clusterName}"   # EKS cluster name the controller manages
+region: "${region}"             # AWS region (e.g. us-east-1)
+vpcId: "${vpcId}"               # VPC where the cluster lives
 
+# --- Service account (IRSA annotation set in main.tf via --set) ---
 serviceAccount:
-  create: true
-  name: aws-load-balancer-controller
+  create: true                              # Create the SA in kube-system
+  name: aws-load-balancer-controller        # SA name used by the pods
