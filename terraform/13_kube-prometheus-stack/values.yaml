@@ -1,5 +1,5 @@
 # kube-prometheus-stack — only overrides this stack needs.
-# Before apply on the bastion: set alertmanager Slack api_url (do not commit secrets).
+# Slack api_url is filled from slack_webhook.url at apply time (keep api_url: '' here).
 
 alertmanager:
   enabled: true
@@ -17,7 +17,7 @@ alertmanager:
     receivers:
       - name: 'slack-notification'
         slack_configs:
-          - api_url: '' # Set on bastion only — do not commit Slack webhook URLs
+          - api_url: '' # filled from slack_webhook.url — do not put the secret here
             channel: '#alerts'
             send_resolved: true
   ingress:

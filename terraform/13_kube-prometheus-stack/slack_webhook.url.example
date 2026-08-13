@@ -1,0 +1,4 @@
+# Paste your Slack Incoming Webhook URL on the next line (nothing else).
+# Copy this file to slack_webhook.url on the bastion, then replace the line below.
+# slack_webhook.url is gitignored — never commit the real URL.
+https://hooks.slack.com/services/YOUR/WEBHOOK/URL
