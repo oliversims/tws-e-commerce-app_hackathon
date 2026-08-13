@@ -14,12 +14,14 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Wait until pods matching a label are Ready (Helm wait=false, so TF returns early).
 wait_pods_ready() {
   local ns="$1" selector="$2" timeout="${3:-300}"
   echo ">> waiting for pods Ready (${selector}) in ${ns} (timeout ${timeout}s)"
   kubectl wait --for=condition=Ready pod -l "${selector}" -n "${ns}" --timeout="${timeout}s"
 }
 
+# Wait until a Deployment rollout finishes successfully.
 wait_rollout() {
   local ns="$1" deploy="$2" timeout="${3:-300}"
   echo ">> waiting for deploy/${deploy} rollout in ${ns} (timeout ${timeout}s)"
@@ -31,6 +33,10 @@ wait_rollout() {
 # Creates: IAM policy/role (IRSA) + AWS Load Balancer Controller Helm release
 # Timed: ~22s terraform + ~21s until pods Ready
 # ---------------------------------------------------------------------------
+echo
+echo "==============================="
+echo "STEP-1: Create ALB Controller using Terraform"
+echo "==============================="
 cd "${ROOT}/07_alb-controller"
 terraform init
 terraform apply --auto-approve
@@ -42,6 +48,10 @@ kubectl get ingressclass alb >/dev/null
 # Creates: IAM policy/role (IRSA) + ExternalDNS Helm release (Route 53 records)
 # Timed: ~17s terraform + ~10s until rollout
 # ---------------------------------------------------------------------------
+echo
+echo "==============================="
+echo "STEP-2: Create ExternalDNS using Terraform"
+echo "==============================="
 cd "${ROOT}/08_external-dns"
 terraform init
 terraform apply --auto-approve
@@ -52,6 +62,10 @@ wait_rollout kube-system external-dns 120
 # Creates: Argo CD Helm release in namespace argocd (UI via ALB Ingress)
 # Timed: ~16s terraform + ~21s until server Ready
 # ---------------------------------------------------------------------------
+echo
+echo "==============================="
+echo "STEP-3: Create Argo CD using Terraform"
+echo "==============================="
 cd "${ROOT}/09_argocd"
 terraform init
 terraform apply --auto-approve
@@ -63,6 +77,10 @@ wait_pods_ready argocd "app.kubernetes.io/name=argocd-server" 300
 # Creates: IRSA role + AWS EBS CSI driver Helm release (for PersistentVolumes)
 # Timed: ~15s terraform + ~12s until pods Ready
 # ---------------------------------------------------------------------------
+echo
+echo "==============================="
+echo "STEP-4: Create EBS CSI Driver using Terraform"
+echo "==============================="
 cd "${ROOT}/10_ebs-csi-driver"
 terraform init
 terraform apply --auto-approve
@@ -73,6 +91,10 @@ wait_pods_ready kube-system "app=ebs-csi-controller" 180
 # Creates: default StorageClass "ebs-storage-class" (ebs.csi.aws.com)
 # Timed: ~2s terraform + ~1s verify
 # ---------------------------------------------------------------------------
+echo
+echo "==============================="
+echo "STEP-5: Create StorageClass using Terraform"
+echo "==============================="
 cd "${ROOT}/11_storage-class"
 terraform init
 terraform apply --auto-approve
@@ -83,24 +105,26 @@ kubectl get storageclass ebs-storage-class >/dev/null
 # Creates: metrics-server Helm release (kubectl top / HPA CPU metrics)
 # Timed: ~4s terraform + ~21s until metrics API answers
 # ---------------------------------------------------------------------------
+echo
+echo "==============================="
+echo "STEP-6: Create metrics-server using Terraform"
+echo "==============================="
 cd "${ROOT}/12_metrics-server"
 terraform init
 terraform apply --auto-approve
 wait_rollout kube-system metrics-server 180
 echo ">> waiting for metrics API"
-for _ in $(seq 1 36); do
-  if kubectl top nodes >/dev/null 2>&1; then
-    break
-  fi
-  sleep 5
-done
-kubectl top nodes >/dev/null
+kubectl wait --for=condition=Available apiservice/v1beta1.metrics.k8s.io --timeout=180s
 
 # ---------------------------------------------------------------------------
 # 13_kube-prometheus-stack
 # Creates: Prometheus, Grafana, Alertmanager Helm release in namespace monitoring
 # Timed: ~32s terraform + ~16s until Grafana Ready (Alertmanager needs Slack api_url)
 # ---------------------------------------------------------------------------
+echo
+echo "==============================="
+echo "STEP-7: Create kube-prometheus-stack using Terraform"
+echo "==============================="
 cd "${ROOT}/13_kube-prometheus-stack"
 terraform init
 terraform apply --auto-approve
