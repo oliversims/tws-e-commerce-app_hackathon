@@ -72,6 +72,11 @@ Thumbs.db
 *.swo
 *~
 
+# Terraform local var files (may contain secrets)
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
 # MongoDB
 *.mongodb
 mongodb/
