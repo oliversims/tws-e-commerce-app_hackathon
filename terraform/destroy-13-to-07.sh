@@ -49,6 +49,11 @@ wait_deploy_gone() {
 cd "${ROOT}/13_kube-prometheus-stack"
 terraform init
 terraform destroy --auto-approve
+# Helm often leaves the namespace; Ingress ALB finalizers can block deletion.
+kubectl get ingress -n monitoring -o name 2>/dev/null | while read -r ing; do
+  kubectl patch -n monitoring "$ing" --type=json -p='[{"op":"remove","path":"/metadata/finalizers"}]' 2>/dev/null || true
+done
+kubectl delete namespace monitoring --wait=false 2>/dev/null || true
 wait_ns_gone monitoring 900
 
 # ---------------------------------------------------------------------------
@@ -86,6 +91,10 @@ sleep 10
 cd "${ROOT}/09_argocd"
 terraform init
 terraform destroy --auto-approve
+kubectl get ingress -n argocd -o name 2>/dev/null | while read -r ing; do
+  kubectl patch -n argocd "$ing" --type=json -p='[{"op":"remove","path":"/metadata/finalizers"}]' 2>/dev/null || true
+done
+kubectl delete namespace argocd --wait=false 2>/dev/null || true
 wait_ns_gone argocd 900
 
 # ---------------------------------------------------------------------------
