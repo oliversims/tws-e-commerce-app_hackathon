@@ -72,9 +72,6 @@ Thumbs.db
 *.swo
 *~
 
-# Slack webhook (local only — never commit)
-terraform/13_kube-prometheus-stack/slack_webhook.url
-
 # MongoDB
 *.mongodb
 mongodb/

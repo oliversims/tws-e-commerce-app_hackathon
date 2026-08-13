@@ -3,9 +3,8 @@
 # Prerequisites: 01–04 + 06 applied, SSH on bastion, kubeconfig ready.
 # Run on the bastion (needs kubectl / Helm access to the private EKS API).
 #
-# Before 13: put the Slack webhook URL in
-#   terraform/13_kube-prometheus-stack/slack_webhook.url
-# (gitignored; copy from slack_webhook.url.example). Empty URL prevents Alertmanager from starting.
+# Before 13: set Slack webhook api_url in 13_kube-prometheus-stack/values.yaml
+# (bastion only — do not commit). Empty api_url prevents Alertmanager from starting.
 #
 # Each stack: terraform apply, then wait until workloads are Ready before the next
 # stack (Helm uses wait=false, so TF alone finishes before pods are healthy).
