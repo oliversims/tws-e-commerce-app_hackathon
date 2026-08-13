@@ -3,8 +3,8 @@
 # Prerequisites: 01–04 + 06 applied, SSH on bastion, kubeconfig ready.
 # Run on the bastion (needs kubectl / Helm access to the private EKS API).
 #
-# Before 13: export SLACK_WEBHOOK_URL (or the script will prompt). Do not commit it.
-# Empty webhook prevents Alertmanager from starting.
+# Before 13: set Slack webhook api_url in 13_kube-prometheus-stack/values.yaml
+# (bastion only — do not commit). Empty api_url prevents Alertmanager from starting.
 #
 # Each stack: terraform apply, then wait until workloads are Ready before the next
 # stack (Helm uses wait=false, so TF alone finishes before pods are healthy).
@@ -119,20 +119,12 @@ kubectl wait --for=condition=Available apiservice/v1beta1.metrics.k8s.io --timeo
 # ---------------------------------------------------------------------------
 # 13_kube-prometheus-stack
 # Creates: Prometheus, Grafana, Alertmanager Helm release in namespace monitoring
-# Timed: ~32s terraform + ~16s until Grafana Ready (needs SLACK_WEBHOOK_URL)
+# Timed: ~32s terraform + ~16s until Grafana Ready (Alertmanager needs Slack api_url)
 # ---------------------------------------------------------------------------
 echo
 echo "==============================="
 echo "STEP-7: Create kube-prometheus-stack using Terraform"
 echo "==============================="
-if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
-  read -r -p "Slack webhook URL: " SLACK_WEBHOOK_URL
-fi
-if [ -z "${SLACK_WEBHOOK_URL}" ]; then
-  echo "ERROR: SLACK_WEBHOOK_URL is required for Alertmanager"
-  exit 1
-fi
-export TF_VAR_slack_webhook_url="${SLACK_WEBHOOK_URL}"
 cd "${ROOT}/13_kube-prometheus-stack"
 terraform init
 terraform apply --auto-approve

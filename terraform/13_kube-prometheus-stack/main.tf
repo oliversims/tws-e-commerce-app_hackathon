@@ -1,7 +1,6 @@
 # 13_kube-prometheus-stack — main.tf
 # Deploys kube-prometheus-stack (Prometheus, Grafana, Alertmanager) via Helm.
 # Run on the bastion after 06_bastion; Ingress/DNS optional via stacks 07–08.
-# Slack webhook: var.slack_webhook_url → values.yaml.tftpl (TF_VAR_slack_webhook_url).
 
 # Helm release that installs Prometheus, Grafana, and Alertmanager in monitoring.
 module "kube_prometheus_stack" {
@@ -21,9 +20,5 @@ module "kube_prometheus_stack" {
     deploy           = 1
   }
 
-  values = [
-    templatefile("${path.module}/values.yaml.tftpl", {
-      slack_api_url = var.slack_webhook_url
-    })
-  ]
+  values = [file("${path.module}/values.yaml")]
 }
