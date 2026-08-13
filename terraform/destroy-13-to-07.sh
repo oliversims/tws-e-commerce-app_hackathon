@@ -13,22 +13,19 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Wait until a namespace is fully deleted (ALB Ingress finalizers can delay this).
+# Wait until resources are gone before the next destroy (ALB Ingress finalizers can delay this).
+# wait_ns_gone <namespace> [timeout_seconds]
 wait_ns_gone() {
-  local ns="$1" timeout="${2:-600}"
-  echo ">> waiting for namespace ${ns} to disappear (timeout ${timeout}s)"
-  kubectl get ns "${ns}" >/dev/null 2>&1 || return 0
-  kubectl wait --for=delete "namespace/${ns}" --timeout="${timeout}s" \
-    || echo "WARNING: namespace ${ns} still present after ${timeout}s (check Ingress finalizers)"
+  kubectl get ns "$1" >/dev/null 2>&1 || return 0
+  kubectl wait --for=delete "namespace/$1" --timeout="${2:-600}s" \
+    || echo "WARNING: namespace $1 still present after ${2:-600}s (check Ingress finalizers)"
 }
 
-# Wait until a Deployment is fully deleted.
+# wait_deploy_gone <namespace> <deployment-name> [timeout_seconds]
 wait_deploy_gone() {
-  local ns="$1" name="$2" timeout="${3:-300}"
-  echo ">> waiting for deploy/${name} gone from ${ns}"
-  kubectl get deploy "${name}" -n "${ns}" >/dev/null 2>&1 || return 0
-  kubectl wait --for=delete "deploy/${name}" -n "${ns}" --timeout="${timeout}s" \
-    || echo "WARNING: deploy/${name} still present after ${timeout}s"
+  kubectl get deploy "$2" -n "$1" >/dev/null 2>&1 || return 0
+  kubectl wait --for=delete "deploy/$2" -n "$1" --timeout="${3:-300}s" \
+    || echo "WARNING: deploy/$2 still present after ${3:-300}s"
 }
 
 # ---------------------------------------------------------------------------
