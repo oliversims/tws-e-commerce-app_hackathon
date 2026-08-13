@@ -1,5 +1,5 @@
 # =============================================================================
-# 08_external-dns / values.yaml  (Helm template — ${...} filled by Terraform)
+# 08_external-dns / values.yaml  (Helm template — vars filled by Terraform templatefile)
 # =============================================================================
 # Syncs Ingress hostnames to Route 53 (simsoliver.com public zone).
 # =============================================================================

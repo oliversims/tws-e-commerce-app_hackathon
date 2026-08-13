@@ -1,5 +1,5 @@
 # =============================================================================
-# 07_alb-controller / values.yaml  (Helm template — ${...} filled by Terraform)
+# 07_alb-controller / values.yaml  (Helm template — vars filled by Terraform templatefile)
 # =============================================================================
 # Overrides for AWS Load Balancer Controller. Chart defaults cover RBAC, etc.
 # =============================================================================
