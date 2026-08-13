@@ -14,18 +14,15 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Wait until pods matching a label are Ready (Helm wait=false, so TF returns early).
+# Helm wait=false — pause until workloads are healthy before the next stack.
+# wait_pods_ready <namespace> <label-selector> [timeout_seconds]
 wait_pods_ready() {
-  local ns="$1" selector="$2" timeout="${3:-300}"
-  echo ">> waiting for pods Ready (${selector}) in ${ns} (timeout ${timeout}s)"
-  kubectl wait --for=condition=Ready pod -l "${selector}" -n "${ns}" --timeout="${timeout}s"
+  kubectl wait --for=condition=Ready pod -l "$2" -n "$1" --timeout="${3:-300}s"
 }
 
-# Wait until a Deployment rollout finishes successfully.
+# wait_rollout <namespace> <deployment-name> [timeout_seconds]
 wait_rollout() {
-  local ns="$1" deploy="$2" timeout="${3:-300}"
-  echo ">> waiting for deploy/${deploy} rollout in ${ns} (timeout ${timeout}s)"
-  kubectl rollout status "deploy/${deploy}" -n "${ns}" --timeout="${timeout}s"
+  kubectl rollout status "deploy/$2" -n "$1" --timeout="${3:-300}s"
 }
 
 # ---------------------------------------------------------------------------
