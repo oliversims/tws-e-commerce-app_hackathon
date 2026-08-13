@@ -79,12 +79,12 @@ module "eks" {
     attach_cluster_primary_security_group = true
   }
 
-  # SPOT worker nodes — 1 node by default, scales up to 3.
+  # SPOT worker nodes — 2 nodes by default (spread across AZs), scales up to 3.
   eks_managed_node_groups = {
     tws-demo-ng = {
-      min_size     = 1
+      min_size     = 2
       max_size     = 3
-      desired_size = 1
+      desired_size = 2
 
       instance_types             = ["t3.large"]
       capacity_type              = "SPOT"
