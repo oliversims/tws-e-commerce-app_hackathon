@@ -16,7 +16,7 @@ server:
     hostname: argocd.simsoliver.com
     annotations:
       alb.ingress.kubernetes.io/scheme: internet-facing
-      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/3fa96c7e-2481-470b-9c26-1cd45eb8cb6c
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/7ff4a82e-fc52-4eea-b3d3-f9b23dec1971
       alb.ingress.kubernetes.io/group.name: easyshop-app-lb
       alb.ingress.kubernetes.io/target-type: ip
       alb.ingress.kubernetes.io/backend-protocol: HTTP
