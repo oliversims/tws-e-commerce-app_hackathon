@@ -30,22 +30,28 @@ spec:
         app: easyshop      # Every pod created gets this label (must match selector above)
 
     spec:
-      # --- Soft topology spread: prefer different nodes and different AZs ---
+      # --- Hard topology spread: must use different nodes and different AZs ---
+      # Needs 2 Ready nodes in 2 AZs (otherwise the 2nd pod can stay Pending).
       topologySpreadConstraints:
-        # Constraint 1: spread across NODES (hostname) — avoid packing pods on one node
+        # Constraint 1: spread across NODES (hostname)
         - maxSkew: 1
-          topologyKey: kubernetes.kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
           labelSelector:
             matchLabels:
               app: easyshop
+          # During rollouts, only count pods from this ReplicaSet (not old pods)
+          matchLabelKeys:
+            - pod-template-hash
         # Constraint 2: spread across AVAILABILITY ZONES
         - maxSkew: 1
           topologyKey: topology.kubernetes.io/zone
-          whenUnsatisfiable: ScheduleAnyway
+          whenUnsatisfiable: DoNotSchedule
           labelSelector:
             matchLabels:
               app: easyshop
+          matchLabelKeys:
+            - pod-template-hash
 
       containers:
         - name: easyshop                      # Name of the container inside the pod
