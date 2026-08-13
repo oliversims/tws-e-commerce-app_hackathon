@@ -66,7 +66,7 @@ echo "==============================="
 cd "${ROOT}/09_argocd"
 terraform init
 terraform apply --auto-approve
-wait_rollout argocd argocd-server 300
+wait_rollout argocd my-argo-cd-argocd-server 300
 wait_pods_ready argocd "app.kubernetes.io/name=argocd-server" 300
 
 # ---------------------------------------------------------------------------
