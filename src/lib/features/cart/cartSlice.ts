@@ -87,6 +87,19 @@ export const cartSlice = createSlice({
       state.selectedSize = undefined;
     },
 
+    /**
+     * Wipes everything personal to the signed-in shopper. Distinct from
+     * clearCart, which runs after a successful order and must leave the
+     * wishlist intact.
+     */
+    clearPersonalData: (state) => {
+      state.cartItems = [];
+      state.wishlists = [];
+      state.countValue = 1;
+      state.selectedColor = undefined;
+      state.selectedSize = undefined;
+    },
+
     incrementAmount: (state, action: PayloadAction<number | string>) => {
       const item = state.cartItems.find((item) => item._id === action.payload);
       if (item) {
@@ -152,6 +165,7 @@ export const {
   hydrate,
   addToCart,
   clearCart,
+  clearPersonalData,
   handleCountValue,
   incrementAmount,
   removeFromCart,

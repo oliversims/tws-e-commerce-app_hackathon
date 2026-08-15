@@ -4,10 +4,11 @@ import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { signedOut } from "@/lib/features/auth/authSlice";
-import { clearCart } from "@/lib/features/cart/cartSlice";
+import { clearPersonalData } from "@/lib/features/cart/cartSlice";
 import {
   CART_STORAGE_KEY,
   USER_STORAGE_KEY,
+  WISHLIST_STORAGE_KEY,
   clearStored,
 } from "@/lib/features/cart/persistence";
 
@@ -33,9 +34,12 @@ export function useLogout(redirectTo = "/") {
       // fall through and clear the client regardless.
     }
 
+    // Cart AND wishlist go with the session -- both are personal to the
+    // shopper, and leaving either behind exposes them to the next person on a
+    // shared browser.
     dispatch(signedOut());
-    dispatch(clearCart());
-    clearStored(USER_STORAGE_KEY, CART_STORAGE_KEY);
+    dispatch(clearPersonalData());
+    clearStored(USER_STORAGE_KEY, CART_STORAGE_KEY, WISHLIST_STORAGE_KEY);
 
     router.push(redirectTo);
     router.refresh();

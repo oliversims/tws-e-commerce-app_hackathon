@@ -41,11 +41,22 @@ async function dbConnect() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
-      // Defence in depth against operator injection: strips keys beginning with
-      // `$` from filter objects before they reach the driver.
-      sanitizeFilter: true,
     };
 
+    // NOTE on operator injection: mongoose's `sanitizeFilter` is deliberately
+    // NOT enabled here.
+    //
+    // It is not a valid connect() option (passing it there is silently
+    // ignored), and the documented global -- mongoose.set('sanitizeFilter') --
+    // wraps ANY nested object with a `$` key in `$eq`, which would break the
+    // deliberate `$in` / `$gte` / `$lte` / `$or` filters in
+    // src/lib/queries/products.ts and src/lib/queries/populate.ts.
+    //
+    // Injection is prevented at the edges instead:
+    //   - request bodies are parsed through Zod (src/lib/validation/schemas.ts)
+    //     before any value reaches a filter;
+    //   - query-string and path params arrive from Next.js as `string`, so they
+    //     cannot carry an operator object in the first place.
     cached.promise = mongoose.connect(getMongoUri(), opts).then((mongoose) => {
       return mongoose;
     });
