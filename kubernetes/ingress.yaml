@@ -22,7 +22,6 @@ metadata:
     alb.ingress.kubernetes.io/backend-protocol: HTTP               # ALB → pods speak HTTP
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'  # ALB listeners
     alb.ingress.kubernetes.io/ssl-redirect: '443'                  # Force HTTP → HTTPS
-    kubernetes.io/ingress.class: alb                         # Legacy class annotation (chart/ALB)
 
 # --- Routing rules ---
 spec:

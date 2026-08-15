@@ -6,10 +6,10 @@ export type OrderItem = {
     _id: string;
     title: string;
     price: number;
-    image: string;
+    image: string | string[];
     images?: string[];
     name?: string;
-  };
+  } | null;
   quantity: number;
   price: number;
 };

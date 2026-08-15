@@ -1,9 +1,10 @@
+/// <reference types="node" />
 import { promises as fs } from 'fs';
 import path from 'path';
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://easyshop-mongodb:27017/easyshop';
-const scriptDir = path.resolve(path.dirname(''));
 
 // Product Schema
 const productSchema = new mongoose.Schema({
@@ -20,7 +21,8 @@ const productSchema = new mongoose.Schema({
   shop_category: { type: String, required: true },
   unit_of_measure: String,
   colors: [String],
-  sizes: [String]
+  sizes: [String],
+  authors: [String]
 }, {
   timestamps: true,
   _id: false // Disable auto-generated ObjectId
@@ -53,10 +55,7 @@ async function migrateData() {
     console.log('Attempting to connect to MongoDB at:', MONGODB_URI);
     
     // Connect to MongoDB with options
-    await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
-      socketTimeoutMS: 45000, // Close sockets after 45s
-    });
+    await mongoose.connect(MONGODB_URI);
     
     console.log('Successfully connected to MongoDB');
 
@@ -103,6 +102,32 @@ async function migrateData() {
     // Insert products
     await Product.insertMany(products);
     console.log(`Migrated ${products.length} products`);
+
+    const userSchema = new mongoose.Schema({
+      name: String,
+      email: { type: String, unique: true, lowercase: true },
+      password: String,
+      role: { type: String, default: 'user' },
+    }, { timestamps: true });
+
+    const User = mongoose.models.User || mongoose.model('User', userSchema);
+    const seedUsers = data.users || [];
+
+    if (seedUsers.length > 0) {
+      await User.deleteMany({});
+      const demoPassword = await bcrypt.hash('test1234', 10);
+      await User.collection.insertMany(
+        seedUsers.map((user: any) => ({
+          name: user.name,
+          email: user.email,
+          password: user.email === 'demo@gmail.com' ? demoPassword : user.password,
+          role: 'user',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }))
+      );
+      console.log(`Migrated ${seedUsers.length} users`);
+    }
 
     console.log('Migration completed successfully');
   } catch (error) {

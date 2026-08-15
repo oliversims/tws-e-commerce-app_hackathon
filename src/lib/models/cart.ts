@@ -12,10 +12,11 @@ export interface ICart {
   total: number;
 }
 
+// As with orders, `product` holds Product.originalId as a plain string and
+// carries no `ref` -- see src/lib/queries/populate.ts.
 const cartItemSchema = new mongoose.Schema<ICartItem>({
   product: {
     type: String,
-    ref: 'Product',
     required: true
   },
   quantity: {
@@ -25,7 +26,8 @@ const cartItemSchema = new mongoose.Schema<ICartItem>({
   },
   price: {
     type: Number,
-    required: true
+    required: true,
+    min: 0
   }
 }, { _id: false });
 
@@ -45,19 +47,14 @@ const cartSchema = new mongoose.Schema<ICart>({
   timestamps: true
 });
 
-// Calculate total before saving
-cartSchema.pre('save', async function(next) {
-  this.total = this.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+// Single source of truth for the cart total.
+cartSchema.pre('save', function (next) {
+  this.total =
+    Math.round(
+      this.items.reduce((sum, item) => sum + item.price * item.quantity, 0) * 100
+    ) / 100;
   next();
 });
 
-// Delete existing model if it exists
-if (mongoose.models.Cart) {
-  delete mongoose.models.Cart;
-}
-
-// Delete existing model collection
-mongoose.connection.collections['carts']?.drop();
-
-const Cart = mongoose.model<ICart>('Cart', cartSchema);
-export default Cart;
+export default (mongoose.models.Cart as mongoose.Model<ICart>) ||
+  mongoose.model<ICart>('Cart', cartSchema);

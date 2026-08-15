@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import { ICartItem } from './cart';
 
 export interface IOrderItem {
   product: string;
@@ -7,26 +6,32 @@ export interface IOrderItem {
   price: number;
 }
 
+export interface IOrderAddress {
+  fullName: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  country: string;
+}
+
 export interface IOrder {
   user: string;
   items: IOrderItem[];
   total: number;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  shippingAddress: {
-    fullName: string;
-    address: string;
-    city: string;
-    postalCode: string;
-    country: string;
-  };
+  shippingAddress: IOrderAddress;
+  billingAddress?: IOrderAddress;
   paymentMethod: string;
   paymentStatus: string;
 }
 
+// `product` stores Product.originalId as a plain string, not an ObjectId, so it
+// deliberately carries no `ref`: Mongoose's populate() would resolve it against
+// Product._id and silently yield null. Use populateLineItems() from
+// src/lib/queries/populate.ts instead.
 const orderItemSchema = new mongoose.Schema<IOrderItem>({
   product: {
     type: String,
-    ref: 'Product',
     required: true
   },
   quantity: {
@@ -36,28 +41,33 @@ const orderItemSchema = new mongoose.Schema<IOrderItem>({
   },
   price: {
     type: Number,
-    required: true
+    required: true,
+    min: 0
   }
 }, { _id: false });
+
+const addressSchema = {
+  fullName: { type: String, required: true },
+  address: { type: String, required: true },
+  city: { type: String, required: true },
+  postalCode: { type: String, required: true },
+  country: { type: String, required: true }
+};
 
 const orderSchema = new mongoose.Schema<IOrder>({
   user: {
     type: String,
     required: true,
-    ref: 'User'
+    index: true
   },
   items: [orderItemSchema],
   total: {
     type: Number,
-    required: true
+    required: true,
+    min: 0
   },
-  shippingAddress: {
-    fullName: { type: String, required: true },
-    address: { type: String, required: true },
-    city: { type: String, required: true },
-    postalCode: { type: String, required: true },
-    country: { type: String, required: true }
-  },
+  shippingAddress: addressSchema,
+  billingAddress: addressSchema,
   paymentMethod: {
     type: String,
     required: true
@@ -78,10 +88,7 @@ const orderSchema = new mongoose.Schema<IOrder>({
   timestamps: true
 });
 
-// Delete existing model if it exists
-if (mongoose.models.Order) {
-  delete mongoose.models.Order;
-}
-
-const Order = mongoose.model<IOrder>('Order', orderSchema);
-export default Order;
+// Reuse the compiled model across hot reloads. Deleting and re-registering
+// discards compiled schema state, hooks and indexes on every module evaluation.
+export default (mongoose.models.Order as mongoose.Model<IOrder>) ||
+  mongoose.model<IOrder>('Order', orderSchema);

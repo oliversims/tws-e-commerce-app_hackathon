@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getTokenFromRequest, isAuthenticated } from "./lib/auth/utils";
+import { getTokenFromRequest, verifyToken } from "./lib/auth/utils";
+import { safeRedirectPath } from "./lib/auth/safeRedirect";
 
 export async function middleware(request: NextRequest) {
-  // Get token and check auth status
+  // Read the cookie once and verify it once.
   const token = getTokenFromRequest(request);
-  const isAuth = token ? await isAuthenticated(request) : null;
-  
-  // Define protected and auth pages
-  const isAuthPage = request.nextUrl.pathname.startsWith("/login") || 
-                    request.nextUrl.pathname.startsWith("/register");
+  const isAuth = token ? await verifyToken(token) : null;
+
+  const isAuthPage =
+    request.nextUrl.pathname.startsWith("/login") ||
+    request.nextUrl.pathname.startsWith("/register");
   const protectedRoutes = ["/checkout", "/profile", "/admin"];
-  const isProtectedRoute = protectedRoutes.some(route => 
+  const isProtectedRoute = protectedRoutes.some((route) =>
     request.nextUrl.pathname.startsWith(route)
   );
 
@@ -24,11 +25,10 @@ export async function middleware(request: NextRequest) {
 
   // If trying to access auth pages while logged in
   if (isAuthPage && isAuth) {
-    const redirectTo = request.nextUrl.searchParams.get('redirect');
-    if (redirectTo) {
-      return NextResponse.redirect(new URL(redirectTo, request.url));
-    }
-    return NextResponse.redirect(new URL("/", request.url));
+    const redirectTo = safeRedirectPath(
+      request.nextUrl.searchParams.get("redirect")
+    );
+    return NextResponse.redirect(new URL(redirectTo, request.url));
   }
 
   // If trying to access admin pages without admin role
@@ -36,8 +36,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  // Add user info to headers if authenticated
+  // Forward the verified identity downstream. The headers are cleared first so
+  // that client-supplied `x-user-id` / `x-user-role` values can never survive
+  // into a route handler on an unauthenticated request.
   const requestHeaders = new Headers(request.headers);
+  requestHeaders.delete("x-user-id");
+  requestHeaders.delete("x-user-role");
+
   if (isAuth) {
     requestHeaders.set("x-user-id", isAuth.userId);
     requestHeaders.set("x-user-role", isAuth.role);
@@ -52,6 +57,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    '/checkout',
     '/checkout/:path*',
     '/profile/:path*',
     '/admin/:path*',

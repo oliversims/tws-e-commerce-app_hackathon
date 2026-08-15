@@ -9,10 +9,19 @@ declare global {
   var mongoose: MongooseCache | undefined;
 }
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/easyshop';
+/**
+ * Fail closed rather than silently defaulting to localhost: a missing
+ * MONGODB_URI in a deployed environment should be a loud startup failure, not a
+ * connection attempt against a database that isn't there.
+ */
+function getMongoUri(): string {
+  const uri = process.env.MONGODB_URI;
 
-if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable inside .env');
+  if (!uri) {
+    throw new Error('Please define the MONGODB_URI environment variable inside .env');
+  }
+
+  return uri;
 }
 
 let cached: MongooseCache = (global.mongoose as MongooseCache) || {
@@ -34,7 +43,21 @@ async function dbConnect() {
       bufferCommands: false,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+    // NOTE on operator injection: mongoose's `sanitizeFilter` is deliberately
+    // NOT enabled here.
+    //
+    // It is not a valid connect() option (passing it there is silently
+    // ignored), and the documented global -- mongoose.set('sanitizeFilter') --
+    // wraps ANY nested object with a `$` key in `$eq`, which would break the
+    // deliberate `$in` / `$gte` / `$lte` / `$or` filters in
+    // src/lib/queries/products.ts and src/lib/queries/populate.ts.
+    //
+    // Injection is prevented at the edges instead:
+    //   - request bodies are parsed through Zod (src/lib/validation/schemas.ts)
+    //     before any value reaches a filter;
+    //   - query-string and path params arrive from Next.js as `string`, so they
+    //     cannot carry an operator object in the first place.
+    cached.promise = mongoose.connect(getMongoUri(), opts).then((mongoose) => {
       return mongoose;
     });
   }

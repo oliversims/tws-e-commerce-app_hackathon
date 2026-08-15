@@ -1,136 +1,23 @@
+/**
+ * Ambient globals only.
+ *
+ * The product types used to be declared here *and* exported from
+ * src/types/product.ts with identical bodies, so consumers were split between
+ * the two copies and they were free to drift. src/types/product.ts is now the
+ * single definition; these aliases exist so that the components which reference
+ * the bare global names keep working.
+ */
+
 type SearchParamsType = { [key: string]: string | string[] | undefined };
 
-type GroceryProduct = {
-  _id: string;
-  title: string;
-  description: string;
-  price: number;
-  oldPrice?: number;
-  categories: string[];
-  image: string[];
-  unit_of_measure: string;
-  shop_category: string;
-};
-
-type GadgetProduct = {
-  _id: string;
-  title: string;
-  description: string;
-  price: number;
-  oldPrice?: number;
-  categories: string[];
-  image: string[];
-  rating: number;
-  amount: number;
-  shop_category: string;
-  unit_of_measure: string;
-};
-
-type BakeryProduct = {
-  _id: string;
-  title: string;
-  description: string;
-  price: number;
-  oldPrice?: number;
-  categories: string[];
-  image: string[];
-  rating: number;
-  amount: number;
-  shop_category: string;
-  unit_of_measure: string;
-};
-
-type ClothingProduct = {
-  _id: string;
-  title: string;
-  description: string;
-  price: number;
-  oldPrice?: number;
-  categories: string[];
-  image: string[];
-  rating: number;
-  amount: number;
-  shop_category: string;
-  unit_of_measure: string;
-  colors: string[];
-  sizes: string[];
-};
-
-type MakeupProduct = {
-  _id: string;
-  title: string;
-  description: string;
-  price: number;
-  oldPrice?: number;
-  categories: string[];
-  image: string[];
-  rating: number;
-  amount: number;
-  shop_category: string;
-  unit_of_measure: string;
-  colors: string[];
-};
-
-type BagsProduct = {
-  _id: string;
-  title: string;
-  description: string;
-  price: number;
-  oldPrice?: number;
-  categories: string[];
-  image: string[];
-  rating: number;
-  amount: number;
-  shop_category: string;
-  unit_of_measure: string;
-  colors: string[];
-};
-
-type BooksProduct = {
-  _id: string;
-  title: string;
-  description: string;
-  price: number;
-  oldPrice?: number;
-  authors: string[];
-  categories: string[];
-  image: string[];
-  rating: number;
-  amount: number;
-  shop_category: string;
-  unit_of_measure: string;
-};
-
-type MedicineProduct = {
-  _id: string;
-  title: string;
-  description: string;
-  price: number;
-  oldPrice?: number;
-  categories: string[];
-  image: string[];
-  rating: number;
-  amount: number;
-  shop_category: string;
-  unit_of_measure: string;
-  colors: string[];
-};
-
-type AllProduct =
-  | GroceryProduct
-  | GadgetProduct
-  | BakeryProduct
-  | ClothingProduct
-  | MakeupProduct
-  | BagsProduct
-  | BooksProduct
-  | MedicineProduct;
-
-type SingleProductType = GroceryProduct &
-  GadgetProduct &
-  BakeryProduct &
-  ClothingProduct &
-  MakeupProduct &
-  BagsProduct &
-  BooksProduct &
-  MedicineProduct;
+type GroceryProduct = import("./types/product").GroceryProduct;
+type GadgetProduct = import("./types/product").GadgetProduct;
+type BakeryProduct = import("./types/product").BakeryProduct;
+type ClothingProduct = import("./types/product").ClothingProduct;
+type MakeupProduct = import("./types/product").MakeupProduct;
+type BagsProduct = import("./types/product").BagsProduct;
+type BooksProduct = import("./types/product").BooksProduct;
+type MedicineProduct = import("./types/product").MedicineProduct;
+type AllProduct = import("./types/product").AllProduct;
+type SingleProductType = import("./types/product").SingleProductType;
+type ProductResponse = import("./types/product").ProductResponse;

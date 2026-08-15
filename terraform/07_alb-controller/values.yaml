@@ -5,7 +5,7 @@
 # =============================================================================
 
 # --- Replicas ---
-replicaCount: ${replicaCount}   # How many controller pods to run
+replicaCount: 1
 
 # --- Container image ---
 image:

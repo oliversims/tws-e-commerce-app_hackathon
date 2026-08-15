@@ -31,16 +31,11 @@ mv /tmp/linux-amd64/helm /usr/local/bin/helm
 chmod +x /usr/local/bin/helm
 rm -rf /tmp/helm.tar.gz /tmp/linux-amd64
 
-# 2. Wait for IAM role credentials (from the EC2 instance profile)
-until aws sts get-caller-identity --region ${region} >/dev/null 2>&1; do
-  sleep 5
-done
-
-# 3. Create kubeconfig directory for ubuntu user
+# 2. Create kubeconfig directory for ubuntu user
 mkdir -p /home/ubuntu/.kube
 chown ubuntu:ubuntu /home/ubuntu/.kube
 
-# 4. Connect kubectl to EKS (retry until cluster is ready)
+# 3. Connect kubectl to EKS (retry until cluster is ready)
 until sudo -u ubuntu aws eks update-kubeconfig \
     --name ${cluster_name} \
     --region ${region} \
@@ -50,11 +45,11 @@ until sudo -u ubuntu aws eks update-kubeconfig \
 done
 chown -R ubuntu:ubuntu /home/ubuntu/.kube
 
-# 5. Set KUBECONFIG on every login
+# 4. Set KUBECONFIG on every login
 echo 'export KUBECONFIG=/home/ubuntu/.kube/config' > /etc/profile.d/kubeconfig.sh
 chmod 644 /etc/profile.d/kubeconfig.sh
 
-# 6. Clone entire project from GitHub
+# 5. Clone entire project from GitHub
 git clone --depth 1 \
   https://github.com/oliversims/tws-e-commerce-app_hackathon.git \
   /home/ubuntu/tws-e-commerce-app_hackathon
@@ -66,5 +61,4 @@ until aws s3 cp "s3://${state_bucket}/${state_key}" \
   sleep 5
 done
 chown -R ubuntu:ubuntu /home/ubuntu/tws-e-commerce-app_hackathon
-
 touch /var/lib/bastion-kubectl-ready

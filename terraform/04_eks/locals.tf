@@ -11,6 +11,6 @@ locals {
   name = data.terraform_remote_state.vpc.outputs.cluster_name
 
   tags = {
-    example = local.name
+    Name = local.name
   }
 }

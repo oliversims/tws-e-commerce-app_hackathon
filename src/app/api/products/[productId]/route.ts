@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Product from '@/lib/models/product';
-import { requireAuth } from '@/lib/auth/utils';
+import { requireAdmin } from '@/lib/auth/utils';
+import { errorResponse, NotFoundError } from '@/lib/api/errors';
+import { productUpdateSchema } from '@/lib/validation/schemas';
+
+/**
+ * NOTE: there is deliberately no POST handler here.
+ *
+ * The previous one created products with no authentication and no role check,
+ * ignoring `params.productId` entirely. Product creation belongs to the
+ * collection route, POST /api/products, which is admin-guarded.
+ */
 
 // Get single product
 export async function GET(
@@ -10,45 +20,16 @@ export async function GET(
 ) {
   try {
     await dbConnect();
-    
-    const product = await Product.findOne({ originalId: params.productId });
-    
-    if (!product) {
-      return NextResponse.json(
-        { error: 'Product not found' },
-        { status: 404 }
-      );
-    }
-    
-    return NextResponse.json(product);
-  } catch (error: any) {
-    console.error('Product error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
-      { status: 500 }
-    );
-  }
-}
 
-// Create single product
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { productId: string } }
-) {
-  try {
-    await dbConnect();
-    
-    const body = await request.json();
-    
-    const product = await Product.create(body);
-    
+    const product = await Product.findOne({ originalId: params.productId });
+
+    if (!product) {
+      throw new NotFoundError('Product not found');
+    }
+
     return NextResponse.json(product);
-  } catch (error: any) {
-    console.error('Product error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return errorResponse(error, 'products/[productId]/GET');
   }
 }
 
@@ -58,36 +39,24 @@ export async function PUT(
   { params }: { params: { productId: string } }
 ) {
   try {
-    const auth = await requireAuth(request);
-    if (auth.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 403 }
-      );
-    }
-    
+    await requireAdmin(request);
     await dbConnect();
-    const body = await request.json();
-    
+
+    const body = productUpdateSchema.parse(await request.json());
+
     const product = await Product.findOneAndUpdate(
       { originalId: params.productId },
       body,
       { new: true, runValidators: true }
     );
-    
+
     if (!product) {
-      return NextResponse.json(
-        { error: 'Product not found' },
-        { status: 404 }
-      );
+      throw new NotFoundError('Product not found');
     }
-    
+
     return NextResponse.json(product);
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
-      { status: error.message === 'Authentication required' ? 401 : 500 }
-    );
+  } catch (error) {
+    return errorResponse(error, 'products/[productId]/PUT');
   }
 }
 
@@ -97,29 +66,17 @@ export async function DELETE(
   { params }: { params: { productId: string } }
 ) {
   try {
-    const auth = await requireAuth(request);
-    if (auth.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 403 }
-      );
-    }
-    
+    await requireAdmin(request);
     await dbConnect();
-    
+
     const product = await Product.findOneAndDelete({ originalId: params.productId });
+
     if (!product) {
-      return NextResponse.json(
-        { error: 'Product not found' },
-        { status: 404 }
-      );
+      throw new NotFoundError('Product not found');
     }
-    
+
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
-      { status: error.message === 'Authentication required' ? 401 : 500 }
-    );
+  } catch (error) {
+    return errorResponse(error, 'products/[productId]/DELETE');
   }
 }

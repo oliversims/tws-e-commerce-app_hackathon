@@ -1,0 +1,19 @@
+# =============================================================================
+# 15_karpenter / values.yaml  (Helm template — vars filled by Terraform templatefile)
+# =============================================================================
+# Karpenter controller. IAM is Pod Identity from 04_eks (no IRSA annotation).
+# Needs: 04_eks (queue + node IAM role + discovery tags), then this Helm release.
+# =============================================================================
+
+# --- Replicas ---
+replicas: 1                    # How many Karpenter controller pods to run
+
+# --- Cluster identity (from Terraform remote state / 04_eks) ---
+settings:
+  clusterName: ${clusterName}                 # EKS cluster Karpenter provisions into
+  interruptionQueue: ${interruptionQueue}     # SQS queue for SPOT interruption events
+
+# --- Service account (Pod Identity association created in 04_eks) ---
+serviceAccount:
+  create: true                 # Create the SA in namespace karpenter
+  name: karpenter              # Must match the 04_eks Pod Identity association

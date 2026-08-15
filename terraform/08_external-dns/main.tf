@@ -59,7 +59,6 @@ module "external_dns" {
     force_update  = true
     wait          = false
     recreate_pods = false
-    deploy        = 1
   }
 
   values = [templatefile("${path.module}/values.yaml", {

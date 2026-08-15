@@ -1,21 +1,18 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Product from '@/lib/models/product';
+import { errorResponse } from '@/lib/api/errors';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     await dbConnect();
-    
+
     const products = await Product.find({ shop_category: 'books' })
       .sort({ createdAt: -1 })
       .limit(10);
 
     return NextResponse.json({ products });
   } catch (error) {
-    console.error('Error fetching books:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch books' },
-      { status: 500 }
-    );
+    return errorResponse(error, 'products/books/GET');
   }
 }

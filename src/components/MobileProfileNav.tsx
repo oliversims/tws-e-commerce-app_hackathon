@@ -13,7 +13,7 @@ import { IoBagCheckOutline, IoLogOut } from "react-icons/io5";
 import { useDispatch } from "react-redux";
 import Modal from "./Modal";
 import { Button } from "./ui/button";
-import { removeCurrentUser } from "@/lib/features/auth/authSlice";
+import { useLogout } from "@/lib/auth/useLogout";
 
 const ContainerVariants: Variants = {
   hidden: {
@@ -98,11 +98,14 @@ const MobileProfileNav = () => {
   const [isConfirm, setIsConfirm] = useState(false);
   const pathname = usePathname();
   const dispatch = useDispatch();
+  const logout = useLogout("/");
   const { isProfileNavOpen } = useAppSelector((state) => state.sidebarSlice);
 
-  const handleLogout = () => {
-    dispatch(removeCurrentUser());
+  // Previously this only dropped `currentUser` from Redux and left the session
+  // cookie in place, so "logout" here did not actually sign the user out.
+  const handleLogout = async () => {
     setIsConfirm(false);
+    await logout();
   };
 
   return (

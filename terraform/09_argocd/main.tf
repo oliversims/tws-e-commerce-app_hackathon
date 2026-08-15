@@ -18,10 +18,7 @@ module "argocd" {
     wait             = false
     recreate_pods    = false
     create_namespace = true
-    deploy           = 1
   }
 
-  values = [templatefile("${path.module}/values.yaml", {
-    serverReplicas = 1
-  })]
+  values = [file("${path.module}/values.yaml")]
 }

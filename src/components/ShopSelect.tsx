@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { IoIosArrowDown } from "react-icons/io";
 import Image from "next/image";
 import {
@@ -19,27 +19,30 @@ type ShopOption = {
   icon: string;
 };
 
+const placeholderShop: ShopOption = {
+  title: "Select Shop",
+  icon: "",
+};
+
 const ShopSelect = () => {
   const router = useRouter();
   const pathname = usePathname();
-  const [selectedShop, setSelectedShop] = useState<ShopOption>({
-    title: "Select Shop",
-    icon: "",
-  });
-
-  const handleSelectShop = useCallback((shop?: string) => {
-    if (shop) {
-      const foundShop = shops.find((s) => s.title === shop);
-      setSelectedShop(foundShop || { title: "Select Shop", icon: "" });
-      router.push(`/shops/${shop}`);
-    }
-  }, [router]);
+  const shopSlug = pathname.split("/")[2];
+  const shopFromPath = shops.find((shop) => shop.title === shopSlug);
+  const [selectedShop, setSelectedShop] = useState<ShopOption>(
+    shopFromPath || placeholderShop
+  );
 
   useEffect(() => {
-    if (selectedShop) {
-      handleSelectShop(selectedShop.title);
-    }
-  }, [selectedShop, handleSelectShop]);
+    setSelectedShop(shopFromPath || placeholderShop);
+  }, [shopSlug, shopFromPath]);
+
+  const handleSelectShop = (shop: string) => {
+    const foundShop = shops.find((s) => s.title === shop);
+    if (!foundShop) return;
+    setSelectedShop(foundShop);
+    router.push(`/shops/${shop}`);
+  };
 
   return (
     <DropdownMenu modal={false}>

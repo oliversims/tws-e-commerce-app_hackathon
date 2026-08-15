@@ -1,10 +1,36 @@
 import { NextRequest } from 'next/server';
 import { jwtVerify, SignJWT } from 'jose';
-import { cookies } from 'next/headers';
+import { AUTH_COOKIE_NAME } from './cookies';
+import { AuthenticationError, AuthorizationError } from '../api/errors';
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-jwt-secret-key'
-);
+/**
+ * Fail closed: a missing or weak JWT_SECRET must stop the process rather than
+ * silently fall back to a shared literal that anyone could use to mint an admin
+ * token. Resolved lazily so that importing this module (which the middleware
+ * does at build time) does not throw during `next build`.
+ */
+const MIN_SECRET_LENGTH = 32;
+
+let cachedSecret: Uint8Array | null = null;
+
+function getJwtSecret(): Uint8Array {
+  if (cachedSecret) return cachedSecret;
+
+  const secret = process.env.JWT_SECRET;
+
+  if (!secret || secret.length < MIN_SECRET_LENGTH) {
+    throw new Error(
+      `JWT_SECRET must be set to a value of at least ${MIN_SECRET_LENGTH} characters. ` +
+        'Generate one with: openssl rand -hex 32'
+    );
+  }
+
+  cachedSecret = new TextEncoder().encode(secret);
+  return cachedSecret;
+}
+
+/** Session lifetime. Kept in step with AUTH_COOKIE_MAX_AGE in ./cookies. */
+const TOKEN_EXPIRY = '7d';
 
 export interface JWTPayload {
   userId: string;
@@ -13,90 +39,57 @@ export interface JWTPayload {
 }
 
 export const generateToken = async (payload: JWTPayload): Promise<string> => {
-  try {
-    const token = await new SignJWT(payload)
-      .setProtectedHeader({ alg: 'HS256' })
-      .setExpirationTime('30d')
-      .sign(JWT_SECRET);
-    
-    return token;
-  } catch (error) {
-    console.error('Error generating token:', error);
-    throw error;
-  }
+  return new SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime(TOKEN_EXPIRY)
+    .sign(getJwtSecret());
 };
 
 export const verifyToken = async (token: string): Promise<JWTPayload | null> => {
   if (!token || token === 'undefined' || token === '[object Object]') {
-    console.log('Invalid token format:', token);
     return null;
   }
 
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
-    console.log('Token verified successfully:', payload);
-    
-    // Verify the token has the required fields
-    if (!payload.userId || !payload.role) {
-      console.error('Token missing required fields:', payload);
+    const { payload } = await jwtVerify(token, getJwtSecret());
+
+    if (typeof payload.userId !== 'string' || typeof payload.role !== 'string') {
       return null;
     }
 
     return {
-      userId: payload.userId as string,
-      role: payload.role as string
+      userId: payload.userId,
+      role: payload.role,
     };
-  } catch (error) {
-    console.error('Token verification error:', error);
+  } catch {
+    // Expired, malformed and forged tokens are all simply "not authenticated".
+    // Deliberately not logged: the token itself must never reach the log sink.
     return null;
   }
 };
 
 export const getTokenFromRequest = (request: NextRequest): string | null => {
-  try {
-    // Try to get token from Authorization header
-    const authHeader = request.headers.get('authorization');
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      console.log('Found token in Authorization header');
-      if (token && token !== 'undefined' && token !== '[object Object]') {
-        return token;
-      }
-    }
+  const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
 
-    // Try to get token from cookie
-    const token = request.cookies.get('token')?.value;
-    if (token) {
-      console.log('Found token in cookie');
-      if (token !== 'undefined' && token !== '[object Object]') {
-        return token;
-      }
-    }
-
-    console.log('No valid token found in request');
-    return null;
-  } catch (error) {
-    console.error('Error getting token from request:', error);
+  if (!token || token === 'undefined' || token === '[object Object]') {
     return null;
   }
+
+  return token;
 };
 
 export const isAuthenticated = async (request: NextRequest) => {
   const token = getTokenFromRequest(request);
   if (!token) return null;
 
-  try {
-    return await verifyToken(token);
-  } catch (error) {
-    console.error('Authentication check failed:', error);
-    return null;
-  }
+  return verifyToken(token);
 };
 
 export const requireAuth = async (request: NextRequest) => {
   const auth = await isAuthenticated(request);
   if (!auth) {
-    throw new Error('Authentication required');
+    throw new AuthenticationError();
   }
   return auth;
 };
@@ -104,7 +97,9 @@ export const requireAuth = async (request: NextRequest) => {
 export const requireRole = async (request: NextRequest, roles: string[]) => {
   const auth = await requireAuth(request);
   if (!roles.includes(auth.role)) {
-    throw new Error('Insufficient permissions');
+    throw new AuthorizationError();
   }
   return auth;
 };
+
+export const requireAdmin = async (request: NextRequest) => requireRole(request, ['admin']);

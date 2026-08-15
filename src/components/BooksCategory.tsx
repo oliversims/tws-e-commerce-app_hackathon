@@ -1,12 +1,12 @@
-import fetchData from "@/lib/fetchDataFromApi";
+import { findBooks } from "@/lib/queries/products";
 import Link from "next/link";
 import BooksSlider from "./sliders/BooksSlider";
 
 const BooksCategory = async () => {
   try {
-    const res = await fetchData.get("/products/books");
-
-    const books = (res.data.products as BooksProduct[]) || [];
+    // Queries MongoDB directly rather than issuing an HTTP request from the
+    // server back to our own /api/products/books route.
+    const books = (await findBooks()) as unknown as BooksProduct[];
 
     return (
       <section className="books-category pt-20">

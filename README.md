@@ -100,9 +100,9 @@ Apply stacks in order from [`terraform/README.md`](terraform/README.md). Summary
 
 **On your PC (in order):** `00_state` → `01_vpc` → `02_route53_acm` → `03_keys` → `04_eks` → `05_jenkins` → `06_bastion`
 
-**On bastion (after SSH in):** `07_alb-controller` → `08_external-dns` → `09_argocd`
+**On bastion (after SSH in):** `07_alb-controller` → `08_external-dns` → `09_argocd` → `10_ebs-csi-driver` → `11_storage-class` → `12_metrics-server` → `13_kube-prometheus-stack` → `14_external-secrets` → `15_karpenter`
 
-**Optional later:** `10_kube-prometheus-stack` (monitoring), `11_ebs-csi-driver` + `12_storage-class` (PVCs for easyshop MongoDB)
+Helpers: `terraform/apply-01-to-06.sh` (PC) then `terraform/apply-07-to-15.sh` (bastion).
 
 ```powershell
 git clone https://github.com/oliversims/tws-e-commerce-app_hackathon.git

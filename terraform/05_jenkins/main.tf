@@ -1,20 +1,18 @@
 # 05_jenkins — main.tf
 # Jenkins CI EC2 in a public subnet with a stable Elastic IP.
-# Apply from your PC after 01_vpc and 03_keys. Boot installs Jenkins/Docker/Trivy.
-# Outputs give SSH + UI URLs for operators on your PC.
+# Apply from your PC after 01_vpc and 03_keys (included in apply-01-to-06.sh).
 
-# Firewall: allows SSH, HTTP, HTTPS, and Jenkins UI (port 8080) from anywhere.
-resource "aws_security_group" "allow_user_to_connect" {
-  name        = "allow TLS"
-  description = "Allow user to connect"
+resource "aws_security_group" "jenkins" {
+  name        = "jenkins-sg"
+  description = "SSH, HTTP, HTTPS, and Jenkins UI"
   vpc_id      = data.terraform_remote_state.vpc.outputs.vpc_id
 
   dynamic "ingress" {
     for_each = [
-      { description = "port 22 allow", from = 22, to = 22, protocol = "tcp", cidr = ["0.0.0.0/0"] },
-      { description = "port 80 allow", from = 80, to = 80, protocol = "tcp", cidr = ["0.0.0.0/0"] },
-      { description = "port 443 allow", from = 443, to = 443, protocol = "tcp", cidr = ["0.0.0.0/0"] },
-      { description = "port 8080 allow", from = 8080, to = 8080, protocol = "tcp", cidr = ["0.0.0.0/0"] }
+      { description = "SSH", from = 22, to = 22, protocol = "tcp", cidr = ["0.0.0.0/0"] },
+      { description = "HTTP", from = 80, to = 80, protocol = "tcp", cidr = ["0.0.0.0/0"] },
+      { description = "HTTPS", from = 443, to = 443, protocol = "tcp", cidr = ["0.0.0.0/0"] },
+      { description = "Jenkins UI", from = 8080, to = 8080, protocol = "tcp", cidr = ["0.0.0.0/0"] }
     ]
     content {
       description = ingress.value.description
@@ -34,16 +32,15 @@ resource "aws_security_group" "allow_user_to_connect" {
   }
 
   tags = {
-    Name = "mysecurity"
+    Name = "jenkins-sg"
   }
 }
 
-# Ubuntu EC2 — install_tools.sh installs Jenkins, Docker, and Trivy on first boot.
-resource "aws_instance" "testinstance" {
+resource "aws_instance" "jenkins" {
   ami                    = data.aws_ami.os_image.id
   instance_type          = var.instance_type
   key_name               = data.terraform_remote_state.keys.outputs.deployer_key_name
-  vpc_security_group_ids = [aws_security_group.allow_user_to_connect.id]
+  vpc_security_group_ids = [aws_security_group.jenkins.id]
   subnet_id              = data.terraform_remote_state.vpc.outputs.public_subnets[0]
   user_data              = file("${path.module}/../shared/scripts/install_tools.sh")
 
@@ -57,8 +54,7 @@ resource "aws_instance" "testinstance" {
   }
 }
 
-# Static public IP attached to Jenkins — survives instance restarts.
 resource "aws_eip" "jenkins_server_ip" {
-  instance = aws_instance.testinstance.id
+  instance = aws_instance.jenkins.id
   domain   = "vpc"
 }

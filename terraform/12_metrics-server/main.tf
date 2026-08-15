@@ -16,7 +16,6 @@ module "metrics_server" {
     force_update  = true
     wait          = false
     recreate_pods = false
-    deploy        = 1
   }
 
   values = [file("${path.module}/values.yaml")]

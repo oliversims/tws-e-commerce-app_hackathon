@@ -28,3 +28,13 @@ README.md
 *.md
 .vscode
 .idea
+.claude
+
+# Infra / docs not needed in the app image
+terraform
+kubernetes
+helm-values
+argocd
+*.txt
+Jenkinsfile
+JENKINS.md

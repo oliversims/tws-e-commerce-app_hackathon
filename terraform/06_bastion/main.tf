@@ -1,6 +1,6 @@
 # 06_bastion — main.tf
 # Bastion jump host with IAM role for EKS — kubectl ready after SSH (no aws configure).
-# Apply from your PC after 04_eks. Enables bastion workflow for stacks 07–13.
+# Apply from your PC after 04_eks. Enables bastion workflow for stacks 07–15.
 # Uploads 00_state to S3 (see state_upload.tf) for bastion first-boot terraform.
 
 # Firewall: SSH only from allowed_ssh_cidr (your public IP).
@@ -59,7 +59,7 @@ resource "aws_iam_role_policy" "bastion_eks_describe" {
   })
 }
 
-# S3 + IAM for running terraform stacks 07–13 on the bastion (IRSA roles/policies).
+# S3 + IAM for running terraform stacks 07–15 on the bastion (IRSA roles/policies).
 resource "aws_iam_role_policy" "bastion_terraform_stacks" {
   name = "terraform-stacks-bastion-irsa"
   role = aws_iam_role.bastion.id
@@ -115,8 +115,10 @@ resource "aws_iam_role_policy" "bastion_terraform_stacks" {
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/AmazonEKS_EBS_CSI_DriverRole",
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/AmazonEKSLoadBalancerControllerRole",
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/AmazonEKSExternalDNSRole",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/AmazonEKSExternalSecretsRole",
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/AWSLoadBalancerControllerIAMPolicy",
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/ExternalDNSPolicy",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/ExternalSecretsSecretsManagerPolicy",
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/*",
         ]
       },

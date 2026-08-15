@@ -24,6 +24,7 @@ import { Button } from "./ui/button";
 import { IoSearch } from "react-icons/io5";
 import { cn } from "@/lib/utils";
 import shops from "@/data/shops.json";
+import { useToast } from "./ui/use-toast";
 
 type SearchBarProps = {
   setIsSearchOpen?: Dispatch<SetStateAction<boolean>>;
@@ -39,22 +40,35 @@ const SearchBarForm = ({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { toast } = useToast();
   const [searchValue, setSearchValue] = useState("");
   const [selectedShop, setSelectedShop] = useState<undefined | string>(
     undefined
   );
 
+  const shopFromPath = pathname.startsWith("/shops/")
+    ? pathname.split("/")[2]
+    : undefined;
+  const activeShop =
+    selectedShop && selectedShop !== "Select Shop"
+      ? selectedShop
+      : shops.find((shop) => shop.title === shopFromPath)?.title;
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!searchValue) return;
+    if (!searchValue.trim()) return;
 
-    if (selectedShop === "Select Shop" || !selectedShop) {
+    if (!activeShop) {
+      toast({
+        title: "Select a shop",
+        description: "Choose a shop first, then search for products.",
+      });
       return;
-    } else {
-      router.push(`/shops/${selectedShop}?q=${searchValue}`);
-      if (!setIsSearchOpen) return;
-      setIsSearchOpen(false);
     }
+
+    router.push(`/shops/${activeShop}?q=${encodeURIComponent(searchValue.trim())}`);
+    if (!setIsSearchOpen) return;
+    setIsSearchOpen(false);
   };
 
   const handleSelectShop = useCallback((shop?: string) => {
@@ -64,12 +78,10 @@ const SearchBarForm = ({
   }, []);
 
   useEffect(() => {
-    handleSelectShop(selectedShop);
-  }, [selectedShop, handleSelectShop]);
-
-  useEffect(() => {
-    handleSelectShop(undefined);
-  }, [pathname, handleSelectShop]);
+    if (shopFromPath && shops.some((shop) => shop.title === shopFromPath)) {
+      setSelectedShop(shopFromPath);
+    }
+  }, [shopFromPath]);
 
   return (
     <form

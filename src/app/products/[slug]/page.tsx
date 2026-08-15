@@ -1,7 +1,7 @@
 import RelatedProducts from "@/components/RelatedProducts";
 import SingleProduct from "@/components/SingleProduct";
 import ProductLoader from "@/components/loader/ProductLoader";
-import fetchData from "@/lib/fetchDataFromApi";
+import { findProductBySlug } from "@/lib/queries/products";
 import { Metadata, ResolvingMetadata } from "next";
 import { Suspense } from "react";
 
@@ -11,16 +11,22 @@ type SingleProductPageProps = {
   };
 };
 
+// Reads MongoDB directly rather than issuing an HTTP request from the server
+// back to our own /api/singleProduct route.
+async function getProduct(slug: string): Promise<SingleProductType | null> {
+  try {
+    return (await findProductBySlug(slug)) as SingleProductType | null;
+  } catch (error) {
+    console.error("Error fetching product:", error);
+    return null;
+  }
+}
+
 export async function generateMetadata(
   { params }: SingleProductPageProps,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
-  // read route params
-  const slug = params.slug;
-
-  // fetch data
-  const res = await fetchData.get(`/singleProduct/${slug}`);
-  const product: SingleProductType | null = res.data || null;
+  const product = await getProduct(params.slug);
 
   return {
     title: product ? product?.title : "Product Not Found",
@@ -31,8 +37,7 @@ export async function generateMetadata(
 const SingleProductPage = async ({
   params: { slug },
 }: SingleProductPageProps) => {
-  const res = await fetchData.get(`/singleProduct/${slug}`);
-  const product: SingleProductType | null = res.data || null;
+  const product = await getProduct(slug);
 
   return (
     <section className="single-product-page bg-secondary dark:bg-background">
@@ -54,8 +59,7 @@ const SingleProductPage = async ({
           <div className="container">
             <h1 className="mb-7 text-3xl font-semibold">You May Also like</h1>
             <div className="grid-layout">
-              {product &&
-                product?.categories.map((item) => (
+              {product?.categories?.map((item) => (
                   <RelatedProducts
                     shop_category={product.shop_category}
                     category={item}

@@ -15,10 +15,15 @@ type OrderTableProps = {
   items: Order['items'];
 };
 
+function getImageSrc(image: string | string[] | undefined): string | null {
+  if (Array.isArray(image) && image[0]) return image[0];
+  if (typeof image === "string" && image) return image;
+  return null;
+}
+
 export function OrderTable({ items }: OrderTableProps) {
   return (
     <Table className="mt-5 table-auto">
-      {/* <TableCaption>A list of your recent invoices.</TableCaption> */}
       <TableHeader className="bg-accent w-full">
         <TableRow className="w-full">
           <TableHead>Item</TableHead>
@@ -27,34 +32,48 @@ export function OrderTable({ items }: OrderTableProps) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {items.map((item) => (
-          <TableRow key={item.product._id}>
-            <TableCell className="font-medium">
-              <div className="flex gap-3">
-                <Image
-                  src={item.product.image}
-                  width={40}
-                  height={40}
-                  alt={item.product.title}
-                  className="rounded-lg"
-                />
-                <div>
-                  <Link
-                    href={`/products/${item.product._id}`}
-                    className="hover:text-primary hover:underline"
-                  >
-                    {item.product.title}
-                  </Link>
-                  <p className="text-xs text-primary mt-1">
-                    <span>${item.price.toFixed(2)}</span>
-                  </p>
+        {items.map((item, index) => {
+          const product = item.product;
+          const imageSrc = getImageSrc(product?.image);
+          const key = product?._id || item._id || String(index);
+
+          return (
+            <TableRow key={key}>
+              <TableCell className="font-medium">
+                <div className="flex gap-3">
+                  {imageSrc ? (
+                    <Image
+                      src={imageSrc}
+                      width={40}
+                      height={40}
+                      alt={product?.title || "Product"}
+                      className="rounded-lg"
+                    />
+                  ) : (
+                    <div className="h-10 w-10 rounded-lg bg-muted" />
+                  )}
+                  <div>
+                    {product ? (
+                      <Link
+                        href={`/products/${product._id}`}
+                        className="hover:text-primary hover:underline"
+                      >
+                        {product.title}
+                      </Link>
+                    ) : (
+                      <span>Product Unavailable</span>
+                    )}
+                    <p className="text-xs text-primary mt-1">
+                      <span>${item.price.toFixed(2)}</span>
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </TableCell>
-            <TableCell className="text-center">{item.quantity}</TableCell>
-            <TableCell className="text-right">${(item.price * item.quantity).toFixed(2)}</TableCell>
-          </TableRow>
-        ))}
+              </TableCell>
+              <TableCell className="text-center">{item.quantity}</TableCell>
+              <TableCell className="text-right">${(item.price * item.quantity).toFixed(2)}</TableCell>
+            </TableRow>
+          );
+        })}
       </TableBody>
       <TableFooter>
         <TableRow>

@@ -1,0 +1,27 @@
+# =============================================================================
+# 15_karpenter / ec2nodeclass.yaml  (Helm/kubectl template — vars from Terraform)
+# =============================================================================
+# Tells Karpenter HOW to build a worker in AWS (AMI, subnets, SG, IAM role).
+# Needs: 04_eks Karpenter IAM + 01_vpc / 04_eks karpenter.sh/discovery tags.
+# Used by: nodepool.yaml (nodeClassRef → this object).
+# =============================================================================
+
+# --- API & Kind ---
+apiVersion: karpenter.k8s.aws/v1   # AWS Karpenter CRD API
+kind: EC2NodeClass                 # EC2 launch settings (not the scale policy)
+
+# --- Identity ---
+metadata:
+  name: default                    # Must match nodepool.yaml nodeClassRef.name
+
+# --- AWS launch settings ---
+spec:
+  role: ${node_iam_role_name}      # IAM role name for Karpenter-created EC2 nodes (from 04_eks)
+  amiSelectorTerms:
+    - alias: al2023@latest         # EKS-optimized Amazon Linux 2023 AMI
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: ${cluster_name}   # Private subnets tagged in 01_vpc
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: ${cluster_name}   # Node SG tagged in 04_eks

@@ -1,12 +1,10 @@
 "use client";
 
-import { removeCookies } from "@/app/actions";
-import { setAuthenticated } from "@/lib/features/auth/authSlice";
+import { useLogout } from "@/lib/auth/useLogout";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { useDispatch } from "react-redux";
 import Modal from "../Modal";
 import { Button } from "../ui/button";
 
@@ -31,16 +29,13 @@ const links = [
 
 const ProfileSidebar = () => {
   const pathname = usePathname();
-  const dispatch = useDispatch();
-  const router = useRouter();
+  const logout = useLogout("/");
 
   const [isConfirm, setIsConfirm] = useState(false);
 
   const handleLogout = async () => {
-    await removeCookies();
-    dispatch(setAuthenticated(false));
     setIsConfirm(false);
-    router.push("/");
+    await logout();
   };
 
   return (

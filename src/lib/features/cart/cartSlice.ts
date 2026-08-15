@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import type { AllProduct } from "@/types/product";
 
 // Define a type for the slice state
 export type CartItem = {
@@ -22,17 +23,15 @@ export interface CartState {
   selectedColor: string | undefined;
 }
 
-// Define the initial state using that type
+/**
+ * Starts empty on both server and client so the two renders agree. Stored
+ * values are applied afterwards by `hydrate`, dispatched from StoreProvider on
+ * mount -- reading localStorage here would produce a hydration mismatch.
+ */
 const initialState: CartState = {
-  cartItems:
-    (typeof window !== "undefined" &&
-      JSON.parse(window.localStorage.getItem("cartItems") as string)) ||
-    [],
+  cartItems: [],
   isCartOpen: false,
-  wishlists:
-    (typeof window !== "undefined" &&
-      JSON.parse(window.localStorage.getItem("wishlists") as string)) ||
-    [],
+  wishlists: [],
   countValue: 1,
   selectedSize: undefined,
   selectedColor: undefined,
@@ -42,9 +41,18 @@ export const cartSlice = createSlice({
   name: "cart",
   initialState,
   reducers: {
+    hydrate: (
+      state,
+      action: PayloadAction<{ cartItems: CartItem[]; wishlists: AllProduct[] }>
+    ) => {
+      state.cartItems = action.payload.cartItems;
+      state.wishlists = action.payload.wishlists;
+    },
+
     handleCartOpen: (state) => {
       state.isCartOpen = !state.isCartOpen;
     },
+
     // add to cart
     addToCart: (state, action: PayloadAction<CartItem>) => {
       const item = state.cartItems.find(
@@ -56,8 +64,8 @@ export const cartSlice = createSlice({
         item.selectedSize = state.selectedSize;
         return;
       }
-      state.cartItems = [...state.cartItems, action.payload];
-      localStorage.setItem("cartItems", JSON.stringify(state.cartItems));
+
+      state.cartItems.push(action.payload);
       state.selectedColor = undefined;
       state.selectedSize = undefined;
     },
@@ -67,7 +75,26 @@ export const cartSlice = createSlice({
       state.cartItems = state.cartItems.filter(
         (item) => item._id !== action.payload
       );
-      localStorage.setItem("cartItems", JSON.stringify(state.cartItems));
+      state.countValue = 1;
+      state.selectedColor = undefined;
+      state.selectedSize = undefined;
+    },
+
+    clearCart: (state) => {
+      state.cartItems = [];
+      state.countValue = 1;
+      state.selectedColor = undefined;
+      state.selectedSize = undefined;
+    },
+
+    /**
+     * Wipes everything personal to the signed-in shopper. Distinct from
+     * clearCart, which runs after a successful order and must leave the
+     * wishlist intact.
+     */
+    clearPersonalData: (state) => {
+      state.cartItems = [];
+      state.wishlists = [];
       state.countValue = 1;
       state.selectedColor = undefined;
       state.selectedSize = undefined;
@@ -77,26 +104,22 @@ export const cartSlice = createSlice({
       const item = state.cartItems.find((item) => item._id === action.payload);
       if (item) {
         item.amount = item.amount ? item.amount + 1 : 1;
-        localStorage.setItem("cartItems", JSON.stringify(state.cartItems));
-        return;
       }
     },
 
-    // decrementamount
+    // decrement amount
     decrementAmount: (state, action: PayloadAction<number | string>) => {
       const item = state.cartItems.find((item) => item._id === action.payload);
+      if (!item) return;
 
-      if (item) {
-        if (item.amount === 1) {
-          state.cartItems = state.cartItems.filter(
-            (item) => item._id !== action.payload
-          );
-          localStorage.setItem("cartItems", JSON.stringify(state.cartItems));
-          return;
-        }
-        item.amount = item.amount ? item.amount - 1 : 1;
+      if (item.amount === 1) {
+        state.cartItems = state.cartItems.filter(
+          (cartItem) => cartItem._id !== action.payload
+        );
         return;
       }
+
+      item.amount = item.amount ? item.amount - 1 : 1;
     },
 
     // add to wishlist
@@ -104,15 +127,10 @@ export const cartSlice = createSlice({
       const existingItem = state.wishlists.find(
         (item) => item._id === action.payload._id
       );
-      if (existingItem) {
-        state.wishlists = state.wishlists.filter(
-          (wishlist) => wishlist._id !== action.payload._id
-        );
-        localStorage.setItem("wishlists", JSON.stringify(state.wishlists));
-      } else {
-        state.wishlists = [...state.wishlists, action.payload];
-        localStorage.setItem("wishlists", JSON.stringify(state.wishlists));
-      }
+
+      state.wishlists = existingItem
+        ? state.wishlists.filter((wishlist) => wishlist._id !== action.payload._id)
+        : [...state.wishlists, action.payload];
     },
 
     // counter
@@ -122,12 +140,13 @@ export const cartSlice = createSlice({
     ) => {
       if (action.payload === "none") {
         state.countValue = 1;
-      } else {
-        state.countValue =
-          action.payload === "increment"
-            ? state.countValue + 1
-            : state.countValue - 1;
+        return;
       }
+
+      state.countValue =
+        action.payload === "increment"
+          ? state.countValue + 1
+          : Math.max(1, state.countValue - 1);
     },
 
     // selected color
@@ -143,7 +162,10 @@ export const cartSlice = createSlice({
 });
 
 export const {
+  hydrate,
   addToCart,
+  clearCart,
+  clearPersonalData,
   handleCountValue,
   incrementAmount,
   removeFromCart,

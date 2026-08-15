@@ -17,26 +17,31 @@ const BookCard = ({
   rating,
   amount,
 }: BooksProduct) => {
+  const authorList = authors ?? [];
+  const coverImage = image?.[0] || "/icons/books.png";
+
   return (
     <div className="book-card bg-secondary p-4 rounded-lg hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
       <Link href={`/products/${_id}`}>
         <div className="rounded-sm overflow-hidden">
-          <Image src={image[0]} width={600} height={880} alt={title} />
+          <Image src={coverImage} width={600} height={880} alt={title} />
         </div>
         <div className="mt-3">
           <h3 className="line-clamp-1">{title}</h3>
-          <p className="text-muted-foreground mt-1">
-            By{" "}
-            {authors.map((author, index) => (
-              <span key={author}>
-                {index > 0 && index === authors.length - 1 && (
-                  <span> and </span>
-                )}
-                {index > 0 && index < authors.length - 1 && <span>, </span>}
-                {author}
-              </span>
-            ))}
-          </p>
+          {authorList.length > 0 && (
+            <p className="text-muted-foreground mt-1">
+              By{" "}
+              {authorList.map((author, index) => (
+                <span key={`${author}-${index}`}>
+                  {index > 0 && index === authorList.length - 1 && (
+                    <span> and </span>
+                  )}
+                  {index > 0 && index < authorList.length - 1 && <span>, </span>}
+                  {author}
+                </span>
+              ))}
+            </p>
+          )}
         </div>
       </Link>
 
@@ -54,14 +59,14 @@ const BookCard = ({
           product={{
             _id,
             title,
-            description: description || "",  
+            description: description || "",
             image,
             price,
             oldPrice,
-            authors,
-            categories: categories || [],  
-            rating: rating || 0,      
-            amount: amount || 1,      
+            authors: authorList,
+            categories: categories || [],
+            rating: rating || 0,
+            amount: amount || 1,
             unit_of_measure,
             shop_category,
           }}

@@ -49,6 +49,8 @@ services:
       - "3000:3000"                # App UI/API on http://localhost:3000
     env_file:
       - .env.local
+    environment:
+      HOSTNAME: "0.0.0.0"          # Listen on all interfaces so host port mapping works
     depends_on:
       migration:
         condition: service_completed_successfully  # Migration must exit 0 first

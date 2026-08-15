@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Apply PC stacks 01_vpc → 06_bastion (skips 05_jenkins).
+# Apply PC stacks 01_vpc → 06_bastion, including 05_jenkins.
 # Prerequisites: 00_state applied, backends updated, terra-key present.
 # Run from a machine with AWS credentials (your PC / WSL).
 
@@ -7,48 +7,61 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# ---------------------------------------------------------------------------
-# 01_vpc
-# Creates: VPC, 2 AZs, public + private subnets, IGW, single NAT gateway
-# ---------------------------------------------------------------------------
+echo
+echo "==============================="
+echo "STEP-1: Create VPC using Terraform"
+echo "==============================="
 cd "${ROOT}/01_vpc"
 terraform init
 terraform apply --auto-approve
+sleep 15
 
-# ---------------------------------------------------------------------------
-# 02_route53_acm
-# Creates: Route 53 hosted zone (simsoliver.com) + ACM wildcard cert (apex + *.)
-# ---------------------------------------------------------------------------
+echo
+echo "==============================="
+echo "STEP-2: Create Route53/ACM using Terraform"
+echo "==============================="
 cd "${ROOT}/02_route53_acm"
 terraform init
 terraform apply --auto-approve
+sleep 15
 
-# ---------------------------------------------------------------------------
-# 03_keys
-# Creates: EC2 key pair "terra-automate-key" from shared/terra-key.pub
-# ---------------------------------------------------------------------------
+echo
+echo "==============================="
+echo "STEP-3: Create keys using Terraform"
+echo "==============================="
 cd "${ROOT}/03_keys"
 terraform init
 terraform apply --auto-approve
+sleep 15
 
-# ---------------------------------------------------------------------------
-# 04_eks
-# Creates: EKS control plane, managed node group, core addons (OIDC for IRSA)
-# ---------------------------------------------------------------------------
+echo
+echo "==============================="
+echo "STEP-4: Create EKS using Terraform"
+echo "==============================="
 cd "${ROOT}/04_eks"
 terraform init
 terraform apply --auto-approve
+sleep 15
 
-# ---------------------------------------------------------------------------
-# 05_jenkins — skipped (not included in this script)
-# ---------------------------------------------------------------------------
+echo
+echo "==============================="
+echo "STEP-5: Create Jenkins using Terraform"
+echo "==============================="
+cd "${ROOT}/05_jenkins"
+terraform init
+terraform apply --auto-approve
+sleep 15
 
-# ---------------------------------------------------------------------------
-# 06_bastion
-# Creates: Bastion EC2, IAM role, EKS access entry, uploads 00_state to S3
-# ---------------------------------------------------------------------------
+echo
+echo "==============================="
+echo "STEP-6: Create bastion using Terraform"
+echo "==============================="
 cd "${ROOT}/06_bastion"
 terraform init
 terraform apply --auto-approve
+sleep 15
 
-echo "Done: 01_vpc → 04_eks → 06_bastion (05_jenkins skipped)."
+echo
+echo "Done: 01_vpc → 02_route53_acm → 03_keys → 04_eks → 05_jenkins → 06_bastion."
+echo "Jenkins URL / SSH: cd ${ROOT}/05_jenkins && terraform output"
+echo "Bastion SSH:       cd ${ROOT}/06_bastion && terraform output -raw ssh_command"
