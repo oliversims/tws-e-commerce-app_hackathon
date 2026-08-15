@@ -17,7 +17,7 @@ metadata:
   annotations:
     alb.ingress.kubernetes.io/group.name: easyshop-app-lb          # Share one ALB with other apps
     alb.ingress.kubernetes.io/scheme: internet-facing              # Public ALB (not internal)
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/7ff4a82e-fc52-4eea-b3d3-f9b23dec1971  # ACM TLS cert
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/cfb83bd1-a366-41c1-b5c9-1fc16f01eea9  # ACM TLS cert
     alb.ingress.kubernetes.io/target-type: ip                      # Register pod IPs (not nodes)
     alb.ingress.kubernetes.io/backend-protocol: HTTP               # ALB → pods speak HTTP
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'  # ALB listeners
