@@ -31,6 +31,9 @@ module "eks" {
   cluster_version                 = "1.31"
   cluster_endpoint_public_access  = false
   cluster_endpoint_private_access = true
+  # Skip module time_sleep before node groups. Default 30s is enough in AWS;
+  # terraform-provider-time 0.14.x can hang that wait on WSL.
+  dataplane_wait_duration = "0s"
 
   access_entries = {
     terraform = {

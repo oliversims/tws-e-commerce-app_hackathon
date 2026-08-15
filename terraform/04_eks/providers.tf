@@ -11,6 +11,11 @@ terraform {
       source  = "hashicorp/aws"
       version = ">= 5.46.0, < 6.0.0"
     }
+    # 0.14.0 time_sleep can busy-loop forever on WSL (no 20m context deadline).
+    time = {
+      source  = "hashicorp/time"
+      version = ">= 0.9.0, < 0.14.0"
+    }
   }
 
   backend "s3" {
