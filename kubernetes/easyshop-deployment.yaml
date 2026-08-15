@@ -55,7 +55,7 @@ spec:
 
       containers:
         - name: easyshop                      # Name of the container inside the pod
-          image: simsoliver/easyshop-app:1    # Docker image to run (Docker Hub repo:tag)
+          image: simsoliver/easyshop-app:1
           imagePullPolicy: Always             # Always pull the latest image on pod start (never use cached)
 
           # --- Exposed Port ---

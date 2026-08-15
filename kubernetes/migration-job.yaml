@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
       - name: migration            # Container that runs the migration tool
-        image: simsoliver/easyshop-migration:1   # Migration image from Docker Hub
+        image: simsoliver/easyshop-migration:1
         imagePullPolicy: Always    # Always pull (don't rely on a stale node cache)
         env:
         - name: MONGODB_URI        # Where migrations connect
