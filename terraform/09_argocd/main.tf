@@ -4,6 +4,13 @@
 # if you expose the Argo CD UI with an Ingress and DNS.
 
 # Helm release that installs Argo CD in the argocd namespace.
+# server.secretkey must be set; an empty argocd-secret makes the UI show
+# "Failed to load data" after helm upgrade.
+resource "random_password" "argocd_server_secretkey" {
+  length  = 32
+  special = false
+}
+
 module "argocd" {
   source = "../modules/helm-release"
 
@@ -21,4 +28,11 @@ module "argocd" {
   }
 
   values = [file("${path.module}/values.yaml")]
+
+  set = [
+    {
+      name  = "configs.secret.extra.server\\.secretkey"
+      value = random_password.argocd_server_secretkey.result
+    }
+  ]
 }
