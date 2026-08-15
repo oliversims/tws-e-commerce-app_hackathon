@@ -9,10 +9,19 @@ declare global {
   var mongoose: MongooseCache | undefined;
 }
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/easyshop';
+/**
+ * Fail closed rather than silently defaulting to localhost: a missing
+ * MONGODB_URI in a deployed environment should be a loud startup failure, not a
+ * connection attempt against a database that isn't there.
+ */
+function getMongoUri(): string {
+  const uri = process.env.MONGODB_URI;
 
-if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable inside .env');
+  if (!uri) {
+    throw new Error('Please define the MONGODB_URI environment variable inside .env');
+  }
+
+  return uri;
 }
 
 let cached: MongooseCache = (global.mongoose as MongooseCache) || {
@@ -32,9 +41,12 @@ async function dbConnect() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
+      // Defence in depth against operator injection: strips keys beginning with
+      // `$` from filter objects before they reach the driver.
+      sanitizeFilter: true,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+    cached.promise = mongoose.connect(getMongoUri(), opts).then((mongoose) => {
       return mongoose;
     });
   }

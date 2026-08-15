@@ -1,8 +1,9 @@
 "use client";
 
-import { authenticated, removeCookies } from "@/app/actions";
+import { authenticated } from "@/app/actions";
 import Logo from "@/assets/Logo";
 import { setAuthenticated } from "@/lib/features/auth/authSlice";
+import { useLogout } from "@/lib/auth/useLogout";
 import { useAppSelector } from "@/lib/hooks";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -67,30 +68,31 @@ const Navbar = () => {
   // from redux
   const { isAuthenticated } = useAppSelector((state) => state.authSlice);
   const dispatch = useDispatch();
+  const logout = useLogout("/");
 
+  // `authenticated()` now verifies the token rather than just checking that a
+  // cookie exists, so an expired session no longer renders the logged-in UI.
+  // `isAuthenticated` is deliberately not a dependency: this effect sets it, and
+  // listing it here made the effect re-trigger itself.
   useEffect(() => {
-    const authentication = async () => {
-      try {
-        const res = await authenticated();
-        dispatch(setAuthenticated(res));
-      } catch (error) {
-        console.log(error);
-      }
-    };
+    let cancelled = false;
 
-    authentication();
-    return () => {};
-  }, [dispatch, isAuthenticated]);
+    authenticated()
+      .then((res) => {
+        if (!cancelled) dispatch(setAuthenticated(res));
+      })
+      .catch(() => {
+        if (!cancelled) dispatch(setAuthenticated(false));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dispatch]);
 
   const handleLogout = async () => {
-    try {
-      await removeCookies();
-      setIsConfirm(false);
-      dispatch(setAuthenticated(false));
-      router.push("/login");
-    } catch (error) {
-      console.log(error);
-    }
+    setIsConfirm(false);
+    await logout();
   };
 
   return (

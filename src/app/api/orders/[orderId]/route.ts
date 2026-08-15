@@ -1,7 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import dbConnect from '@/lib/db';
 import Order from '@/lib/models/order';
-import { requireAuth } from '@/lib/auth/utils';
+import { requireAuth, requireAdmin } from '@/lib/auth/utils';
+import { errorResponse, NotFoundError, ValidationError } from '@/lib/api/errors';
+import { updateOrderStatusSchema } from '@/lib/validation/schemas';
+import { populateLineItems } from '@/lib/queries/populate';
+
+/**
+ * A non-ObjectId path segment makes Mongoose throw a CastError, which would
+ * otherwise surface as a 500 for what is plainly a client error.
+ */
+function assertValidOrderId(orderId: string) {
+  if (!mongoose.Types.ObjectId.isValid(orderId)) {
+    throw new ValidationError('Invalid order id');
+  }
+}
+
+async function orderResponse(order: any) {
+  return NextResponse.json({
+    ...order.toObject(),
+    items: await populateLineItems(order.items),
+  });
+}
 
 // Get single order
 export async function GET(
@@ -10,26 +31,21 @@ export async function GET(
 ) {
   try {
     const auth = await requireAuth(request);
+    assertValidOrderId(params.orderId);
     await dbConnect();
-    
+
     const order = await Order.findOne({
       _id: params.orderId,
       user: auth.userId
-    }).populate('items.product', 'title price image');
-    
+    });
+
     if (!order) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404 }
-      );
+      throw new NotFoundError('Order not found');
     }
-    
-    return NextResponse.json(order);
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
-      { status: error.message === 'Authentication required' ? 401 : 500 }
-    );
+
+    return orderResponse(order);
+  } catch (error) {
+    return errorResponse(error, 'orders/[orderId]/GET');
   }
 }
 
@@ -39,37 +55,25 @@ export async function PUT(
   { params }: { params: { orderId: string } }
 ) {
   try {
-    const auth = await requireAuth(request);
-    if (auth.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 403 }
-      );
-    }
-    
+    await requireAdmin(request);
+    assertValidOrderId(params.orderId);
     await dbConnect();
-    const body = await request.json();
-    const { status } = body;
-    
+
+    const { status } = updateOrderStatusSchema.parse(await request.json());
+
     const order = await Order.findByIdAndUpdate(
       params.orderId,
       { status },
-      { new: true }
-    ).populate('items.product', 'title price image');
-    
-    if (!order) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404 }
-      );
-    }
-    
-    return NextResponse.json(order);
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
-      { status: error.message === 'Authentication required' ? 401 : 500 }
+      { new: true, runValidators: true }
     );
+
+    if (!order) {
+      throw new NotFoundError('Order not found');
+    }
+
+    return orderResponse(order);
+  } catch (error) {
+    return errorResponse(error, 'orders/[orderId]/PUT');
   }
 }
 
@@ -80,36 +84,27 @@ export async function DELETE(
 ) {
   try {
     const auth = await requireAuth(request);
+    assertValidOrderId(params.orderId);
     await dbConnect();
-    
+
     const order = await Order.findOne({
       _id: params.orderId,
       user: auth.userId
     });
-    
+
     if (!order) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404 }
-      );
+      throw new NotFoundError('Order not found');
     }
-    
-    // Only allow cancellation of pending orders
+
     if (order.status !== 'pending') {
-      return NextResponse.json(
-        { error: 'Cannot cancel order in current status' },
-        { status: 400 }
-      );
+      throw new ValidationError('Cannot cancel order in current status');
     }
-    
+
     order.status = 'cancelled';
     await order.save();
-    
-    return NextResponse.json(order);
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
-      { status: error.message === 'Authentication required' ? 401 : 500 }
-    );
+
+    return orderResponse(order);
+  } catch (error) {
+    return errorResponse(error, 'orders/[orderId]/DELETE');
   }
 }

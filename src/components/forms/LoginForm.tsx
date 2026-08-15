@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { createCookies } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -20,9 +19,10 @@ import {
   setAuthenticated,
   setCurrentUser,
 } from "@/lib/features/auth/authSlice";
+import { safeRedirectPath } from "@/lib/auth/safeRedirect";
 import fetchData from "@/lib/fetchDataFromApi";
 import { useAppSelector } from "@/lib/hooks";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Dispatch, SetStateAction, useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { LuLoader } from "react-icons/lu";
@@ -49,8 +49,8 @@ export function LoginForm({ setIsOpen }: LoginFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "demo@gmail.com",
-      password: "test1234",
+      email: "",
+      password: "",
     },
   });
 
@@ -58,43 +58,44 @@ export function LoginForm({ setIsOpen }: LoginFormProps) {
     setIsLoading(true);
 
     try {
+      // The session cookie is set by the API response itself. There is
+      // deliberately no follow-up call to write it client-side -- doing so
+      // replaced the httpOnly cookie with a script-readable one.
       const res = await fetchData.post("/auth/login", values);
-      await createCookies(res.data.token);
+
       dispatch(setCurrentUser(res.data.user as User));
       dispatch(setAuthenticated(true));
       form.reset();
-      setIsLoading(false);
       setIsOpen && setIsOpen(false);
-      
+
       toast({
         title: "Success",
         description: "You have successfully Logged in",
         variant: "success",
       });
 
-      // Handle redirection based on redirect parameter
-      const redirectTo = searchParams.get('redirect');
-      if (redirectTo) {
-        if (redirectTo === '/checkout' && cartItems.length === 0) {
-          router.replace('/');
-          toast({
-            title: "Empty Cart",
-            description: "Please add items to your cart before checking out",
-            variant: "default",
-          });
-        } else {
-          router.replace(redirectTo);
-        }
+      const redirectTo = safeRedirectPath(searchParams.get("redirect"));
+
+      if (redirectTo === "/checkout" && cartItems.length === 0) {
+        router.replace("/");
+        toast({
+          title: "Empty Cart",
+          description: "Please add items to your cart before checking out",
+          variant: "default",
+        });
       } else {
-        router.replace('/');
+        router.replace(redirectTo);
       }
+
+      router.refresh();
     } catch (error: any) {
-      setIsLoading(false);
       toast({
         title: "Authentication failed",
         description: error.response?.data?.error || "Please try again",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -113,6 +114,7 @@ export function LoginForm({ setIsOpen }: LoginFormProps) {
               <FormControl>
                 <Input
                   type="email"
+                  autoComplete="email"
                   placeholder="Enter your email"
                   {...field}
                 />
@@ -130,6 +132,7 @@ export function LoginForm({ setIsOpen }: LoginFormProps) {
               <FormControl>
                 <Input
                   type="password"
+                  autoComplete="current-password"
                   placeholder="Enter your password"
                   {...field}
                 />
@@ -157,6 +160,12 @@ export function LoginForm({ setIsOpen }: LoginFormProps) {
           type="button"
           variant="outline"
           className="w-full flex items-center gap-2"
+          onClick={() =>
+            toast({
+              title: "Google login unavailable",
+              description: "Use email and password to sign in.",
+            })
+          }
         >
           <FcGoogle className="text-xl" />
           Login with Google

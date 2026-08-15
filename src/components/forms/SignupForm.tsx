@@ -1,6 +1,5 @@
 "use client";
 
-import { createCookies } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -11,7 +10,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { setAuthenticated, setCurrentUser } from "@/lib/features/auth/authSlice";
+import {
+  User,
+  setAuthenticated,
+  setCurrentUser,
+} from "@/lib/features/auth/authSlice";
 import fetchData from "@/lib/fetchDataFromApi";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -53,50 +56,43 @@ const SignupForm = ({ setIsOpen }: SignupFormProps) => {
     setIsLoading(true);
 
     try {
-      console.log('Submitting registration form:', values);
+      // As with login, the session cookie comes back on the response and is
+      // never re-written by client code.
       const res = await fetchData.post("/auth/register", values);
-      console.log('Registration response:', res.data);
 
-      if (res.data.token) {
-        // First set the cookie
-        await createCookies(res.data.token);
-        
-        // Then update the auth state
-        dispatch(setAuthenticated(true));
-        dispatch(setCurrentUser(res.data.user));
+      dispatch(setCurrentUser(res.data.user as User));
+      dispatch(setAuthenticated(true));
+      form.reset();
 
-        toast({
-          title: "Success",
-          description: "You have successfully registered",
-          variant: "success",
-        });
+      toast({
+        title: "Success",
+        description: "You have successfully registered",
+        variant: "success",
+      });
 
-        // Small delay to ensure state is updated
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        setIsLoading(false);
-        setIsOpen && setIsOpen(false);
-        router.push("/");
-      }
+      setIsOpen && setIsOpen(false);
+      router.push("/");
+      router.refresh();
     } catch (error: any) {
-      console.error('Registration error:', error?.response?.data);
-      const errorMessage = error?.response?.data?.error || "Registration failed. Please try again.";
-      
+      const errorMessage =
+        error?.response?.data?.error || "Registration failed. Please try again.";
+
       toast({
         title: "Registration failed",
         description: errorMessage,
         variant: "destructive",
       });
 
-      if (errorMessage.includes("email")) {
+      if (errorMessage.toLowerCase().includes("email")) {
         form.setError("email", { message: errorMessage });
-      } else if (errorMessage.includes("password")) {
+      } else if (errorMessage.toLowerCase().includes("password")) {
         form.setError("password", { message: errorMessage });
       }
-      
+    } finally {
       setIsLoading(false);
     }
   }
+
   return (
     <Form {...form}>
       <form
@@ -108,11 +104,12 @@ const SignupForm = ({ setIsOpen }: SignupFormProps) => {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>name</FormLabel>
+              <FormLabel>Name</FormLabel>
               <FormControl>
                 <Input
                   className="h-12"
-                  type="name"
+                  type="text"
+                  autoComplete="name"
                   placeholder="Name"
                   {...field}
                 />
@@ -132,6 +129,7 @@ const SignupForm = ({ setIsOpen }: SignupFormProps) => {
                 <Input
                   className="h-12"
                   type="email"
+                  autoComplete="email"
                   placeholder="Email"
                   {...field}
                 />
@@ -151,6 +149,7 @@ const SignupForm = ({ setIsOpen }: SignupFormProps) => {
                 <Input
                   className="h-12"
                   type="password"
+                  autoComplete="new-password"
                   placeholder="Password"
                   {...field}
                 />
@@ -164,7 +163,7 @@ const SignupForm = ({ setIsOpen }: SignupFormProps) => {
           disabled={isLoading}
           className="w-full mt-3 h-12 gap-3"
         >
-          <span>Login</span>
+          <span>Sign up</span>
           {isLoading && (
             <span className="text-base animate-spin">
               <LuLoader />
@@ -180,6 +179,12 @@ const SignupForm = ({ setIsOpen }: SignupFormProps) => {
         <Button
           type="button"
           className="w-full h-12 flex gap-4 bg-gray-900 border-input hover:text-white hover:bg-gray-800"
+          onClick={() =>
+            toast({
+              title: "Google signup unavailable",
+              description: "Use email and password to create an account.",
+            })
+          }
         >
           <span className="text-3xl">
             <FcGoogle />

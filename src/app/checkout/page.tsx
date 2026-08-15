@@ -5,7 +5,7 @@ import OrderSummery from "@/components/checkout/OrderSummery";
 import BillingAddressForm from "@/components/forms/BillingAddressForm";
 import ShippingAddressForm from "@/components/forms/ShippingAddressForm";
 import { AnimatePresence, Variants, motion } from "framer-motion";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 const containerVariants: Variants = {
   hidden: {
@@ -36,20 +36,44 @@ const btns = [
   },
 ];
 
+// Addresses start empty. They previously defaulted to a real person's name and
+// street address, so any customer who never opened the form placed an order
+// shipped to it.
+const emptyAddress = {
+  title: "",
+  phone: "",
+  country: "",
+  city: "",
+  state: "",
+  zip: "",
+  streetAddress: "",
+};
+
 const CheckoutPage = () => {
   const [activeForm, setActiveForm] = useState("billing");
   const [formData, setFormData] = useState<{
     shipping: any;
     billing: any;
-  }>({ shipping: null, billing: null });
+  }>({ shipping: emptyAddress, billing: emptyAddress });
 
-  const updateFormData = (type: 'shipping' | 'billing', data: any) => {
+  // Stable identity so the child forms' effects do not re-fire on every render
+  // of this page.
+  const updateFormData = useCallback((type: 'shipping' | 'billing', data: any) => {
     setFormData(prev => ({
       ...prev,
       [type]: data
     }));
-    console.log(`Updated ${type} data:`, data);
-  };
+  }, []);
+
+  const handleBillingChange = useCallback(
+    (data: any) => updateFormData('billing', data),
+    [updateFormData]
+  );
+
+  const handleShippingChange = useCallback(
+    (data: any) => updateFormData('shipping', data),
+    [updateFormData]
+  );
 
   return (
     <div className="checkout-page">
@@ -90,7 +114,7 @@ const CheckoutPage = () => {
                   animate="visible"
                   exit="exit"
                 >
-                  <BillingAddressForm onFormDataChange={(data) => updateFormData('billing', data)} />
+                  <BillingAddressForm onFormDataChange={handleBillingChange} />
                 </motion.div>
               )}
               {activeForm === "shipping" && (
@@ -100,7 +124,7 @@ const CheckoutPage = () => {
                   animate="visible"
                   exit="exit"
                 >
-                  <ShippingAddressForm onFormDataChange={(data) => updateFormData('shipping', data)} />
+                  <ShippingAddressForm onFormDataChange={handleShippingChange} />
                 </motion.div>
               )}
             </div>

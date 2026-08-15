@@ -26,51 +26,83 @@ const item: Variants = {
   },
 };
 
+const ORDERS_PER_PAGE = 5;
+
 const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [page, setPage] = useState(1);
+  const [reloadToken, setReloadToken] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const ordersPerPage = 5;
 
-  const fetchOrders = async (pageNum: number = 1) => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/orders?page=${pageNum}&limit=${ordersPerPage}`);
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch orders");
-      }
-      
-      if (pageNum === 1) {
-        setOrders(data.orders);
-        if (data.orders.length > 0) {
-          setSelectedOrder(data.orders[0]);
-        }
+  // Fetching is driven solely by this effect. Previously "Refresh" both reset
+  // `page` and called the fetcher directly, firing two overlapping requests
+  // whose responses could land out of order.
+  useEffect(() => {
+    let cancelled = false;
+    const isFirstPage = page === 1;
+
+    const run = async () => {
+      if (isFirstPage) {
+        setLoading(true);
       } else {
-        setOrders(prev => [...prev, ...data.orders]);
+        setIsLoadingMore(true);
       }
-      setHasMore(data.orders.length === ordersPerPage);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      setError(null);
+
+      try {
+        const response = await fetch(
+          `/api/orders?page=${page}&limit=${ORDERS_PER_PAGE}`
+        );
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to fetch orders");
+        }
+
+        if (cancelled) return;
+
+        const fetched: Order[] = data.orders ?? [];
+
+        if (isFirstPage) {
+          setOrders(fetched);
+          setSelectedOrder(fetched.length > 0 ? fetched[0] : null);
+        } else {
+          setOrders((prev) => [...prev, ...fetched]);
+        }
+
+        setHasMore(fetched.length === ORDERS_PER_PAGE);
+      } catch (err: any) {
+        if (!cancelled) setError(err.message);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+          setIsLoadingMore(false);
+        }
+      }
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [page, reloadToken]);
+
+  const handleRefresh = () => {
+    setHasMore(true);
+    if (page === 1) {
+      // Already on page 1 -- bump the token so the effect re-runs.
+      setReloadToken((token) => token + 1);
+    } else {
+      setPage(1);
     }
   };
 
-  const handleRefresh = () => {
-    setPage(1);
-    setHasMore(true);
-    fetchOrders(1);
-  };
-
-  useEffect(() => {
-    fetchOrders(page);
-  }, [page]);
-
+  // Only the initial load blanks the view; "Load More" keeps the list on screen.
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -151,7 +183,7 @@ const Orders = () => {
             </motion.div>
           ))}
           
-          {hasMore && !loading && (
+          {hasMore && !isLoadingMore && (
             <button
               onClick={() => setPage(prev => prev + 1)}
               className="w-full py-2 bg-secondary text-primary rounded-md hover:bg-secondary/90"
@@ -159,8 +191,8 @@ const Orders = () => {
               Load More Orders
             </button>
           )}
-          
-          {loading && (
+
+          {isLoadingMore && (
             <div className="text-center py-4">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
             </div>

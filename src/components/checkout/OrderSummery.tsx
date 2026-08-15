@@ -1,8 +1,9 @@
 "use client";
 
-import { removeFromCart } from "@/lib/features/cart/cartSlice";
+import { clearCart, removeFromCart } from "@/lib/features/cart/cartSlice";
 import { useAppSelector } from "@/lib/hooks";
 import { totalPrice } from "@/lib/utils";
+import { SHIPPING_FEE, TAX_FEE, roundCurrency } from "@/lib/commerce/pricing";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -12,6 +13,8 @@ import { useDispatch } from "react-redux";
 import Skeleton from "../loader/Skeleton";
 import { Button } from "../ui/button";
 import { Card, CardHeader, CardTitle } from "../ui/card";
+import { useToast } from "../ui/use-toast";
+import { useRouter } from "next/navigation";
 
 const paymentMethods = [
   {
@@ -24,12 +27,28 @@ interface OrderSummeryProps {
   billingData: any;
 }
 
+const REQUIRED_ADDRESS_FIELDS = [
+  "title",
+  "phone",
+  "streetAddress",
+  "city",
+  "state",
+  "country",
+  "zip",
+] as const;
+
 const OrderSummery = ({ shippingData, billingData }: OrderSummeryProps) => {
-  const [selectedMethod, setSelectedMethod] = useState("");
+  const [selectedMethod, setSelectedMethod] = useState("cash on delivery");
   const [isClient, setIsClient] = useState(false);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   const { cartItems } = useAppSelector((state) => state.cartSlice);
   const dispatch = useDispatch();
+  const { toast } = useToast();
+  const router = useRouter();
+
+  const subtotal = totalPrice(cartItems);
+  const orderTotal = roundCurrency(subtotal + SHIPPING_FEE + TAX_FEE);
 
   const getImageSrc = (item: any) => {
     if (!item.image) return '/placeholder.jpg';
@@ -46,85 +65,86 @@ const OrderSummery = ({ shippingData, billingData }: OrderSummeryProps) => {
     setSelectedMethod(title);
   };
 
+  const validateAddress = (address: any, type: string) => {
+    const missingFields = REQUIRED_ADDRESS_FIELDS.filter(
+      (field) => !String(address?.[field] ?? "").trim()
+    );
+
+    if (!address || missingFields.length > 0) {
+      throw new Error(
+        `Please fill in the following ${type} fields: ${
+          missingFields.join(", ") || "all fields"
+        }`
+      );
+    }
+  };
+
   const placeOrder = async () => {
     try {
       if (!selectedMethod) {
         throw new Error('Please select a payment method');
       }
 
-      if (!shippingData || !billingData) {
-        throw new Error('Please fill in both shipping and billing addresses');
+      if (cartItems.length <= 0) {
+        throw new Error('Your cart is empty');
       }
 
-      console.log('Shipping address:', shippingData);
-      console.log('Billing address:', billingData);
+      const billing = billingData;
+      const shipping = shippingData || billingData;
 
-      // Validate addresses
-      const validateAddress = (address: any, type: string) => {
-        const missingFields = Object.entries(address)
-          .filter(([_, value]) => !value)
-          .map(([key]) => key);
+      validateAddress(billing, 'billing');
+      validateAddress(shipping, 'shipping');
 
-        if (missingFields.length > 0) {
-          throw new Error(`Please fill in the following ${type} fields: ${missingFields.join(', ')}`);
-        }
-      };
-
-      validateAddress(shippingData, 'shipping');
-      validateAddress(billingData, 'billing');
-
-      console.log('Submitting order with data:', {
-        shippingAddress: shippingData,
-        billingAddress: billingData,
-        paymentMethod: selectedMethod,
-        items: cartItems.map(item => ({
-          productId: item._id,
-          quantity: item.amount || 1,
-          price: item.price
-        })),
-        total: totalPrice(cartItems) + 20
-      });
-
+      // Only the selection is sent. Prices and the order total are resolved
+      // server-side from the product catalogue -- anything sent from here would
+      // be ignored.
       const orderData = {
-        shippingAddress: shippingData,
-        billingAddress: billingData,
+        shippingAddress: shipping,
+        billingAddress: billing,
         paymentMethod: selectedMethod,
-        items: cartItems.map(item => ({
-          productId: item._id,
+        items: cartItems.map((item) => ({
+          productId: String(item._id),
           quantity: item.amount || 1,
-          price: item.price
         })),
-        total: totalPrice(cartItems) + 20 // Including shipping and tax
       };
 
-      console.log('Submitting order with data:', orderData);
+      setIsPlacingOrder(true);
 
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(orderData),
       });
 
       const data = await response.json();
-      console.log('Server response:', data);
-      
+
+      if (response.status === 401) {
+        toast({
+          title: "Please log in",
+          description: "You need to be signed in to place an order.",
+          variant: "destructive",
+        });
+        router.push('/login?redirect=/checkout');
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(data.error || 'Failed to place order');
       }
 
-      // Clear cart and redirect on success
-      cartItems.forEach(item => dispatch(removeFromCart(item._id)));
-      window.location.href = '/checkout/success';
-
-      // Clear cart and redirect to success page
-      cartItems.forEach(item => dispatch(removeFromCart(item._id)));
-      window.location.href = '/checkout/success';
-
+      dispatch(clearCart());
+      router.push('/checkout/success');
     } catch (error: any) {
-      console.error('Error placing order:', error);
-      alert(error.message || 'Failed to place order');
+      toast({
+        title: "Could not place order",
+        description: error.message || 'Failed to place order',
+        variant: "destructive",
+      });
+    } finally {
+      setIsPlacingOrder(false);
     }
   };
 
@@ -138,7 +158,7 @@ const OrderSummery = ({ shippingData, billingData }: OrderSummeryProps) => {
         <h2 className="text-2xl font-bold mb-5">Order Summary</h2>
         <div className="pb-4">
           {cartItems.length <= 0 && (
-            <div className="text-center py-6">No prodduct select!</div>
+            <div className="text-center py-6">No products selected!</div>
           )}
           {cartItems.map((item) => (
             <motion.div
@@ -164,7 +184,6 @@ const OrderSummery = ({ shippingData, billingData }: OrderSummeryProps) => {
                       sizes="50px"
                       className="object-cover rounded-md"
                       onError={() => {
-                        console.error(`Failed to load image for product: ${item.title}`);
                         setImageErrors(prev => ({ ...prev, [item._id]: true }));
                       }}
                       priority
@@ -225,28 +244,28 @@ const OrderSummery = ({ shippingData, billingData }: OrderSummeryProps) => {
         <div className="flex flex-col gap-5 border-t pt-4">
           <div className="flex justify-between font-semibold">
             <p>Subtotal</p>
-            <p>${totalPrice(cartItems)}</p>
+            <p>${subtotal.toFixed(2)}</p>
           </div>
           <div className="flex justify-between">
             <p>Shipping</p>
-            <p className="text-muted-foreground">$10</p>
+            <p className="text-muted-foreground">${SHIPPING_FEE}</p>
           </div>
           <div className="flex justify-between">
             <p>Tax</p>
-            <p className="text-muted-foreground">$10</p>
+            <p className="text-muted-foreground">${TAX_FEE}</p>
           </div>
           <div className="flex justify-between font-semibold">
             <p>Total</p>
-            <p>${totalPrice(cartItems) + 10 + 10}</p>
+            <p>${orderTotal.toFixed(2)}</p>
           </div>
         </div>
         <Button
           type="button"
-          disabled={cartItems.length <= 0 || selectedMethod === ""}
+          disabled={cartItems.length <= 0 || selectedMethod === "" || isPlacingOrder}
           className="w-full mt-5 capitalize"
           onClick={placeOrder}
         >
-          Place Order
+          {isPlacingOrder ? "Placing order..." : "Place Order"}
         </Button>
       </div>
     </AnimatePresence>

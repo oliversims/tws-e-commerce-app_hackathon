@@ -1,9 +1,8 @@
-import fetchData from "@/lib/fetchDataFromApi";
-import layoutSettings from "@/lib/layoutSettings";
 import NoProductFound from "./NoProductFound";
 import Paginations from "./Paginations";
 import ProductCard from "./cards/ProductCard";
-import type { AllProduct } from "@/types/product";
+import layoutSettings from "@/lib/layoutSettings";
+import { queryProducts } from "@/lib/queries/products";
 
 type CategoryPageProps = {
   searchParams: SearchParamsType;
@@ -13,25 +12,27 @@ type CategoryPageProps = {
   };
 };
 
+const first = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value[0] : value;
+
 const ProductGrid = async ({ params, searchParams }: CategoryPageProps) => {
   try {
     const { shop, category } = params;
-    
-    const queryParams = {
-      page: searchParams?.page || "1",
-      q: searchParams?.q || "",
-      sort: searchParams?.sort || "",
-      order: searchParams?.order || "",
-      color: searchParams?.color || "",
-      minPrice: searchParams?.minPrice || "",
-      maxPrice: searchParams?.maxPrice || "",
-      shop_category: shop,
-      ...(category && { categories: category })
-    };
 
-    const res = await fetchData.get('/products', queryParams);
-    const products = (res.data?.products || []) as AllProduct[];
-    const totalCount = res.data?.total || 0;
+    // Queries MongoDB directly. This used to issue an HTTP request from the
+    // server back to this same process just to reach the route handler.
+    const { products, pagination } = await queryProducts({
+      page: first(searchParams?.page) || "1",
+      q: first(searchParams?.q),
+      sort: first(searchParams?.sort),
+      order: first(searchParams?.order),
+      color: first(searchParams?.color),
+      minPrice: first(searchParams?.minPrice),
+      maxPrice: first(searchParams?.maxPrice),
+      shop_category: shop,
+      categories: category || undefined,
+    });
+
     const settings = layoutSettings?.[shop] || { productCardVariants: 'style-1' };
 
     if (products.length === 0) {
@@ -50,9 +51,9 @@ const ProductGrid = async ({ params, searchParams }: CategoryPageProps) => {
           ))}
         </div>
         <Paginations
-          totalCount={totalCount}
-          currentPage={Number(queryParams.page)}
-          totalPages={Math.ceil(totalCount / 10)}
+          totalCount={pagination.total}
+          currentPage={pagination.page}
+          totalPages={pagination.pages}
         />
       </>
     );

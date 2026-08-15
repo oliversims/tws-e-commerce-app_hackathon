@@ -285,7 +285,7 @@ const ShopCategories = () => {
             <div>
               <Link
                 className="hover:underline text-primary"
-                href={"shops/grocery"}
+                href={"/shops/grocery"}
               >
                 Shop Now
               </Link>

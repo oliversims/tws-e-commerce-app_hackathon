@@ -1,39 +1,38 @@
 "use server";
 
 import { cookies } from 'next/headers';
+import { AUTH_COOKIE_NAME } from '@/lib/auth/cookies';
+import { verifyToken } from '@/lib/auth/utils';
 
-export async function createCookies(token: string) {
-  const url = new URL(process.env.NEXTAUTH_URL || 'http://localhost:3000');
-  
-  // Log cookie creation
-  console.log('Creating cookie with domain:', url.hostname);
-  
-  cookies().set({
-    name: "token",
-    value: token,
-    httpOnly: false, // Allow client-side access
-    secure: false, // Set to false for HTTP on EC2
-    sameSite: "lax",
-    path: "/",
-    domain: url.hostname === 'localhost' ? 'localhost' : undefined, // Let browser set domain for EC2
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  });
-}
+/**
+ * NOTE: there is deliberately no `createCookies` action here.
+ *
+ * The session cookie is issued by /api/auth/login and /api/auth/register as an
+ * httpOnly, Secure cookie and is applied to the browser by the response itself.
+ * The previous client-invoked action re-set the same cookie with
+ * `httpOnly: false, secure: false`, which overwrote the hardened cookie and
+ * exposed the session token to any script on the origin.
+ */
 
 export async function removeCookies() {
   cookies().delete({
-    name: "token",
+    name: AUTH_COOKIE_NAME,
     path: "/",
   });
 }
 
 export async function getCookies(name: string) {
-  const cookieStore = cookies();
-  const cookie = await cookieStore.get(name);
-  return cookie;
+  return cookies().get(name);
 }
 
+/**
+ * Verifies the session token rather than merely checking that a cookie exists,
+ * so an expired or forged token no longer renders the logged-in UI.
+ */
 export async function authenticated() {
-  const token = await getCookies("token");
-  return !!token;
+  const token = cookies().get(AUTH_COOKIE_NAME)?.value;
+  if (!token) return false;
+
+  const payload = await verifyToken(token);
+  return payload !== null;
 }
