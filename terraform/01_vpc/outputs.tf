@@ -12,6 +12,11 @@ output "vpc_id" {
   value       = module.vpc.vpc_id
 }
 
+output "vpc_cidr" {
+  description = "Used by 04_eks (API and node SSH from inside the VPC)"
+  value       = local.vpc_cidr
+}
+
 output "cluster_name" {
   description = "Used by 04_eks and 06_bastion"
   value       = local.name

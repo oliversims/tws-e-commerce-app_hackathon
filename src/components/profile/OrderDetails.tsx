@@ -15,6 +15,24 @@ type OrderDetailsProps = {
   order: Order;
 };
 
+function getProductImageSrc(product: Order["items"][number]["product"]): string | null {
+  if (!product) return null;
+
+  if (Array.isArray(product.images) && product.images[0]) {
+    return product.images[0];
+  }
+
+  if (Array.isArray(product.image) && product.image[0]) {
+    return product.image[0];
+  }
+
+  if (typeof product.image === "string" && product.image) {
+    return product.image;
+  }
+
+  return null;
+}
+
 const OrderDetails = ({ order }: OrderDetailsProps) => {
   const [imageError, setImageError] = useState<Record<string, boolean>>({});
 
@@ -86,33 +104,51 @@ const OrderDetails = ({ order }: OrderDetailsProps) => {
       <div className="mt-6 p-4">
         <h4 className="font-medium mb-4">Order Items</h4>
         <div className="space-y-4">
-          {order.items.map((item) => (
-            <motion.div
-              key={item.product?._id || `order-item-${item._id}`}
-              variants={itemAnimation}
-              className="flex items-center gap-4 p-3 bg-accent rounded-lg"
-            >
-              <div className="h-16 w-16 flex-shrink-0 relative">
-                <Image
-                  src={item.product?.images?.[0] || item.product?.image || '/placeholder.jpg'}
-                  alt={item.product?.title || 'Product'}
-                  width={80}
-                  height={80}
-                  className="rounded-lg object-cover"
-                  onError={() => setImageError(prev => ({ ...prev, [item.product?._id]: true }))}
-                />
-              </div>
-              <div className="flex-grow">
-                <h5 className="font-medium">{item.product?.name || 'Product Unavailable'}</h5>
-                <p className="text-sm text-muted-foreground">
-                  ${(item.price || 0).toFixed(2)} x {item.quantity}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="font-medium">${((item.price || 0) * (item.quantity || 0)).toFixed(2)}</p>
-              </div>
-            </motion.div>
-          ))}
+          {order.items.map((item, index) => {
+            const productKey = item.product?._id || item._id || String(index);
+            const imageSrc = getProductImageSrc(item.product);
+            const showImage = Boolean(imageSrc) && !imageError[productKey];
+
+            return (
+              <motion.div
+                key={productKey}
+                variants={itemAnimation}
+                className="flex items-center gap-4 p-3 bg-accent rounded-lg"
+              >
+                <div className="h-16 w-16 flex-shrink-0 relative bg-muted rounded-lg overflow-hidden">
+                  {showImage ? (
+                    <Image
+                      src={imageSrc as string}
+                      alt={item.product?.title || "Product"}
+                      width={80}
+                      height={80}
+                      className="h-16 w-16 rounded-lg object-cover"
+                      onError={() =>
+                        setImageError((prev) => ({ ...prev, [productKey]: true }))
+                      }
+                    />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-[10px] text-muted-foreground">
+                      No image
+                    </div>
+                  )}
+                </div>
+                <div className="flex-grow">
+                  <h5 className="font-medium">
+                    {item.product?.title || item.product?.name || "Product Unavailable"}
+                  </h5>
+                  <p className="text-sm text-muted-foreground">
+                    ${(item.price || 0).toFixed(2)} x {item.quantity}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium">
+                    ${((item.price || 0) * (item.quantity || 0)).toFixed(2)}
+                  </p>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
     </motion.div>

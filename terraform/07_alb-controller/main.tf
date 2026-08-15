@@ -37,14 +37,12 @@ module "alb_controller" {
     force_update  = true
     wait          = false
     recreate_pods = false
-    deploy        = 1
   }
 
   values = [templatefile("${path.module}/values.yaml", {
-    replicaCount = 1
-    clusterName  = data.terraform_remote_state.eks.outputs.eks_cluster_name
-    region       = data.terraform_remote_state.vpc.outputs.region
-    vpcId        = data.terraform_remote_state.vpc.outputs.vpc_id
+    clusterName = data.terraform_remote_state.eks.outputs.eks_cluster_name
+    region      = data.terraform_remote_state.vpc.outputs.region
+    vpcId       = data.terraform_remote_state.vpc.outputs.vpc_id
   })]
 
   set = [

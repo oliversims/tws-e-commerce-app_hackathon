@@ -1,5 +1,5 @@
 # =============================================================================
-# 09_argocd / values.yaml  (Helm template — ${serverReplicas} from Terraform)
+# 09_argocd / values.yaml
 # =============================================================================
 # Overrides for Argo CD UI behind ALB + TLS (server.insecure: TLS ends at ALB).
 # Release name my-argo-cd → Deployments like my-argo-cd-argocd-server.
@@ -16,7 +16,7 @@ configs:
 
 # --- Argo CD server + Ingress ---
 server:
-  replicas: ${serverReplicas}     # Number of argocd-server pods
+  replicas: 1
   ingress:
     enabled: true                 # Create Ingress for the UI
     controller: aws               # Use AWS ALB Ingress support in the chart

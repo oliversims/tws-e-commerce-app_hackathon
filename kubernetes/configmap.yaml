@@ -2,8 +2,8 @@
 # configmap.yaml
 # =============================================================================
 # This file stores non-secret app settings as key/value pairs.
-# The Deployment loads these as environment variables (envFrom + env).
-# Secrets (passwords/tokens) do NOT belong here → see secrets.yaml.
+# The Deployment loads these as environment variables (envFrom).
+# Secrets (JWT, Mongo passwords) come from External Secrets → AWS Secrets Manager.
 # =============================================================================
 
 # --- API & Kind ---

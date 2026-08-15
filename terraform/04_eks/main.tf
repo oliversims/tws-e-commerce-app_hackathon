@@ -1,19 +1,17 @@
 # 04_eks — main.tf
-# Creates the EKS cluster, managed node group, and core addons.
-# Apply from your PC after 01_vpc and 03_keys. Private API only — use bastion/Jenkins.
-# Outputs (cluster name, OIDC) feed stacks 07+ run from the bastion.
+# EKS cluster, managed node group (bootstrap for Karpenter), and core addons.
+# Apply from your PC after 01_vpc and 03_keys. Private API — use bastion/Jenkins.
 
-# Firewall rules allowing SSH (port 22) into EKS worker nodes for debugging.
 resource "aws_security_group" "node_group_remote_access" {
-  name   = "allow HTTP"
+  name   = "${local.name}-node-ssh"
   vpc_id = data.terraform_remote_state.vpc.outputs.vpc_id
 
   ingress {
-    description = "port 22 allow"
+    description = "SSH from VPC (bastion / Jenkins)"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [data.terraform_remote_state.vpc.outputs.vpc_cidr]
   }
 
   egress {
@@ -25,8 +23,6 @@ resource "aws_security_group" "node_group_remote_access" {
   }
 }
 
-# EKS control plane, worker node group, and core addons (CoreDNS, kube-proxy, VPC-CNI).
-# API endpoint is private-only — access via Bastion or Jenkins inside the VPC.
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 20.0"
@@ -36,13 +32,12 @@ module "eks" {
   cluster_endpoint_public_access  = false
   cluster_endpoint_private_access = true
 
-  # Grants cluster-admin to whoever runs terraform apply (AWS credentials in use).
   access_entries = {
-    example = {
+    terraform = {
       principal_arn = data.aws_iam_session_context.current.issuer_arn
 
       policy_associations = {
-        example = {
+        cluster_admin = {
           policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
           access_scope = {
             type = "cluster"
@@ -52,11 +47,10 @@ module "eks" {
     }
   }
 
-  # Allows HTTPS from Jenkins/Bastion to reach the private Kubernetes API.
   cluster_security_group_additional_rules = {
-    access_for_bastion_jenkins_hosts = {
-      cidr_blocks = ["0.0.0.0/0"]
-      description = "Allow all HTTPS traffic from jenkins and Bastion host"
+    vpc_https = {
+      cidr_blocks = [data.terraform_remote_state.vpc.outputs.vpc_cidr]
+      description = "HTTPS from VPC (bastion / Jenkins)"
       from_port   = 443
       to_port     = 443
       protocol    = "tcp"
@@ -65,9 +59,10 @@ module "eks" {
   }
 
   cluster_addons = {
-    coredns    = { most_recent = true }
-    kube-proxy = { most_recent = true }
-    vpc-cni    = { most_recent = true }
+    coredns                = { most_recent = true }
+    kube-proxy             = { most_recent = true }
+    vpc-cni                = { most_recent = true }
+    eks-pod-identity-agent = { most_recent = true }
   }
 
   vpc_id                   = data.terraform_remote_state.vpc.outputs.vpc_id
@@ -79,12 +74,13 @@ module "eks" {
     attach_cluster_primary_security_group = true
   }
 
-  # SPOT worker nodes — 1 node by default, scales up to 3.
   eks_managed_node_groups = {
     tws-demo-ng = {
+      # Bootstrap node for Karpenter + system pods. Extra workers come from 15_karpenter
+      # (Terraform ignores desired_size after create).
       min_size     = 1
-      max_size     = 3
-      desired_size = 2
+      max_size     = 5
+      desired_size = 1
 
       instance_types             = ["t3.large"]
       capacity_type              = "SPOT"
@@ -99,9 +95,32 @@ module "eks" {
       tags = {
         Name        = "tws-demo-ng"
         Environment = "dev"
-        ExtraTag    = "e-commerce-app"
       }
     }
+  }
+
+  node_security_group_tags = {
+    "karpenter.sh/discovery" = local.name
+  }
+
+  tags = local.tags
+}
+
+# IAM + SQS interruption queue for Karpenter (Helm/NodePool live in 15_karpenter).
+module "karpenter" {
+  source  = "terraform-aws-modules/eks/aws//modules/karpenter"
+  version = "~> 20.0"
+
+  cluster_name = module.eks.cluster_name
+  namespace    = "karpenter"
+
+  enable_v1_permissions           = true
+  enable_pod_identity             = true
+  create_pod_identity_association = true
+  enable_irsa                     = false
+
+  node_iam_role_additional_policies = {
+    AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
   }
 
   tags = local.tags

@@ -1,10 +1,10 @@
+/// <reference types="node" />
 import { promises as fs } from 'fs';
 import path from 'path';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://easyshop-mongodb:27017/easyshop';
-const scriptDir = path.resolve(path.dirname(''));
 
 // Product Schema
 const productSchema = new mongoose.Schema({
@@ -21,7 +21,8 @@ const productSchema = new mongoose.Schema({
   shop_category: { type: String, required: true },
   unit_of_measure: String,
   colors: [String],
-  sizes: [String]
+  sizes: [String],
+  authors: [String]
 }, {
   timestamps: true,
   _id: false // Disable auto-generated ObjectId
@@ -54,10 +55,7 @@ async function migrateData() {
     console.log('Attempting to connect to MongoDB at:', MONGODB_URI);
     
     // Connect to MongoDB with options
-    await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
-      socketTimeoutMS: 45000, // Close sockets after 45s
-    });
+    await mongoose.connect(MONGODB_URI);
     
     console.log('Successfully connected to MongoDB');
 

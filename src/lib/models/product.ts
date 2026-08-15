@@ -51,6 +51,9 @@ const productSchema = new mongoose.Schema({
   }],
   sizes: [{ 
     type: String 
+  }],
+  authors: [{
+    type: String
   }]
 }, {
   timestamps: true

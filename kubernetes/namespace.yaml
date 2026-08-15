@@ -13,6 +13,3 @@ kind: Namespace                # A Namespace isolates names and resources
 # --- Identity ---
 metadata:
   name: easyshop               # The namespace name (kubectl get ns easyshop)
-  labels:
-    name: easyshop             # Label for filtering: kubectl get ns -l name=easyshop
-    environment: production    # Optional label describing the environment

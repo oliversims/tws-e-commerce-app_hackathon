@@ -1,14 +1,4 @@
 {
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "strict": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "noEmit": true
-  },
-  "include": ["scripts/migrate-data.ts", "scripts/seed-demo-user.ts"]
+  "extends": "./scripts/tsconfig.json",
+  "include": ["scripts/**/*.ts"]
 }

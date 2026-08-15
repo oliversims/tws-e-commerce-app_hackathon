@@ -98,8 +98,7 @@ sudo ./aws/install
 
 Apply stacks in order from [`terraform/README.md`](terraform/README.md). Summary:
 
-**On your PC (in order):** `00_state` → `01_vpc` → `02_route53_acm` → `03_keys` → `04_eks` → `06_bastion`  
-(`05_jenkins` is optional and not in `apply-01-to-06.sh`)
+**On your PC (in order):** `00_state` → `01_vpc` → `02_route53_acm` → `03_keys` → `04_eks` → `05_jenkins` → `06_bastion`
 
 **On bastion (after SSH in):** `07_alb-controller` → `08_external-dns` → `09_argocd` → `10_ebs-csi-driver` → `11_storage-class` → `12_metrics-server` → `13_kube-prometheus-stack` → `14_external-secrets` → `15_karpenter`
 

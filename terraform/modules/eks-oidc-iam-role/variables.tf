@@ -1,7 +1,3 @@
-# modules/eks-oidc-iam-role — variables.tf
-# Inputs: role name, EKS OIDC provider URL, policy ARNs, optional tags.
-# Callers pass oidc_provider_url from 04_eks remote-state outputs.
-
 variable "role_name" {
   description = "IAM role name for the Kubernetes service account"
   type        = string

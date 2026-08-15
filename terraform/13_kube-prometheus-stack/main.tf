@@ -17,7 +17,6 @@ module "kube_prometheus_stack" {
     wait             = false
     recreate_pods    = false
     create_namespace = true
-    deploy           = 1
   }
 
   values = [file("${path.module}/values.yaml")]

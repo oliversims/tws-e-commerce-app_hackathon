@@ -1,0 +1,20 @@
+# =============================================================================
+# 14_external-secrets / values.yaml
+# =============================================================================
+# External Secrets Operator — syncs AWS Secrets Manager → K8s Secrets via IRSA.
+# =============================================================================
+
+installCRDs: true
+
+serviceAccount:
+  create: true
+  name: external-secrets
+  annotations:
+    eks.amazonaws.com/role-arn: ${role_arn}
+
+# Keep the operator light for this hackathon cluster
+replicaCount: 1
+webhook:
+  replicaCount: 1
+certController:
+  replicaCount: 1

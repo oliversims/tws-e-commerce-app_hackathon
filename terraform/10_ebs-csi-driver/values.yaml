@@ -1,12 +1,12 @@
 # =============================================================================
-# 10_ebs-csi-driver / values.yaml  (Helm template — ${replicaCount} from Terraform)
+# 10_ebs-csi-driver / values.yaml
 # =============================================================================
 # Overrides for AWS EBS CSI driver. IRSA role ARN is set via Helm --set in main.tf.
 # =============================================================================
 
 # --- Controller ---
 controller:
-  replicaCount: ${replicaCount}   # Number of ebs-csi-controller pods
+  replicaCount: 1
   serviceAccount:
     create: true                  # Create the controller ServiceAccount
     name: ebs-csi-controller-sa   # SA name (IRSA annotation applied in main.tf)

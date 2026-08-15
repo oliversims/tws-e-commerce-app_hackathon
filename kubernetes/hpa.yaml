@@ -2,7 +2,8 @@
 # hpa.yaml
 # =============================================================================
 # This file auto-scales the easyshop Deployment by CPU usage.
-# Needs: terraform 12_metrics-server (provides CPU metrics for HPA).
+# Needs: terraform 12_metrics-server (CPU metrics) and 15_karpenter (extra nodes
+# when new pods do not fit on the current workers).
 # =============================================================================
 
 # --- API & Kind ---

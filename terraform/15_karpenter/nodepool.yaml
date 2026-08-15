@@ -1,0 +1,48 @@
+# =============================================================================
+# 15_karpenter / nodepool.yaml
+# =============================================================================
+# Tells Karpenter WHEN to add/remove workers and WHAT instance types to use.
+# Does not watch HTTP traffic. HPA adds pods; Pending pods make Karpenter launch nodes.
+# Needs: ec2nodeclass.yaml (same name: default) + running Karpenter controller.
+# =============================================================================
+
+# --- API & Kind ---
+apiVersion: karpenter.sh/v1        # Karpenter NodePool API
+kind: NodePool                     # Scale policy (instance types, caps, consolidation)
+
+# --- Identity ---
+metadata:
+  name: default                    # Name of this NodePool
+
+# --- Node template ---
+spec:
+  template:
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws   # CRD group for EC2NodeClass
+        kind: EC2NodeClass         # Launch settings live in ec2nodeclass.yaml
+        name: default              # Must match ec2nodeclass.yaml metadata.name
+      expireAfter: 720h            # Recycle the node after 30 days even if still in use
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]        # x86_64 only (matches current managed node group)
+        - key: kubernetes.io/os
+          operator: In
+          values: ["linux"]        # Linux workers only
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot"]         # SPOT only (cheaper; interruption queue in 04_eks)
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values: ["t3.medium", "t3.large", "t3a.medium", "t3a.large"]  # Karpenter picks the smallest fit
+
+  # --- Cap on all Karpenter nodes combined (not per node) ---
+  limits:
+    cpu: "8"                       # Stop launching when Karpenter nodes total 8 vCPU
+    memory: 16Gi                   # Stop launching when Karpenter nodes total 16 GiB RAM
+
+  # --- Scale-down ---
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized  # Remove idle or poorly packed nodes
+    consolidateAfter: 5m           # Wait 5 minutes before terminating those nodes

@@ -2,7 +2,7 @@
 # easyshop-service.yaml
 # =============================================================================
 # This file creates a stable virtual IP / DNS name in front of easyshop pods.
-# Ingress calls the Service; the Service load-balances to pods labeled app=easyshop.
+# Ingress/ALB calls the Service; the Service load-balances to pods labeled app=easyshop.
 # Path: browser → ALB → Service:80 → pod:3000
 # =============================================================================
 
@@ -17,10 +17,9 @@ metadata:
 
 # --- Networking ---
 spec:
-  type: NodePort               # Also opens a port on each node (debug); Ingress still uses ClusterIP path via ALB
+  type: ClusterIP              # Internal only — ALB (target-type: ip) talks to pod IPs via this Service
   ports:
-    - port: 80                 # Port clients/Ingress call on the Service
+    - port: 80                 # Port Ingress/ALB calls on the Service
       targetPort: 3000         # Port on the easyshop container (Next.js)
-      nodePort: 30000          # Fixed node port for optional direct access (VPC/bastion)
   selector:
     app: easyshop              # Must match Deployment pod labels

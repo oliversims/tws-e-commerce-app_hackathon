@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Variants, motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Order } from "@/types/order";
 
 const item: Variants = {
@@ -27,16 +27,19 @@ const item: Variants = {
 };
 
 const ORDERS_PER_PAGE = 5;
+const MIN_REFRESH_MS = 800;
 
 const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [page, setPage] = useState(1);
   const [reloadToken, setReloadToken] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
+  const refreshStartedAt = useRef<number | null>(null);
 
   // Fetching is driven solely by this effect. Previously "Refresh" both reset
   // `page` and called the fetcher directly, firing two overlapping requests
@@ -48,6 +51,9 @@ const Orders = () => {
     const run = async () => {
       if (isFirstPage) {
         setLoading(true);
+        // Hide pagination until this page's result is known, so "Load More"
+        // cannot flash on then off when the fetch is faster than a paint.
+        setHasMore(false);
       } else {
         setIsLoadingMore(true);
       }
@@ -78,8 +84,22 @@ const Orders = () => {
       } catch (err: any) {
         if (!cancelled) setError(err.message);
       } finally {
+        if (cancelled) return;
+
+        const refreshAt = refreshStartedAt.current;
+        if (refreshAt) {
+          const remaining = MIN_REFRESH_MS - (Date.now() - refreshAt);
+          if (remaining > 0) {
+            await new Promise((resolve) => setTimeout(resolve, remaining));
+          }
+          if (refreshStartedAt.current === refreshAt) {
+            refreshStartedAt.current = null;
+          }
+        }
+
         if (!cancelled) {
           setLoading(false);
+          setIsRefreshing(false);
           setIsLoadingMore(false);
         }
       }
@@ -93,60 +113,68 @@ const Orders = () => {
   }, [page, reloadToken]);
 
   const handleRefresh = () => {
-    setHasMore(true);
+    if (loading || isRefreshing || isLoadingMore) return;
+    setIsRefreshing(true);
+    refreshStartedAt.current = Date.now();
     if (page === 1) {
-      // Already on page 1 -- bump the token so the effect re-runs.
       setReloadToken((token) => token + 1);
     } else {
       setPage(1);
     }
   };
 
-  // Only the initial load blanks the view; "Load More" keeps the list on screen.
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">Loading orders...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-red-500 text-center">{error}</div>
-        <button 
-          onClick={handleRefresh}
-          className="mt-4 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
-        >
-          Try Again
-        </button>
-      </div>
-    );
-  }
-
-  if (orders.length === 0 && !loading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">No orders found</div>
-      </div>
-    );
-  }
+  const isInitialLoad = loading && !isRefreshing && orders.length === 0 && !error;
+  const showRefreshState = isRefreshing || (loading && orders.length > 0);
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">My Orders</h1>
-        <button 
+        <button
+          type="button"
           onClick={handleRefresh}
-          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+          disabled={showRefreshState || isLoadingMore}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md transition-opacity hover:opacity-90 disabled:opacity-70"
         >
-          Refresh
+          {showRefreshState && (
+            <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+          )}
+          {showRefreshState ? "Refreshing..." : "Refresh"}
         </button>
       </div>
-      
+
+      {isInitialLoad && (
+        <div className="text-center">Loading orders...</div>
+      )}
+
+      {error && (
+        <div className="text-center">
+          <div className="text-red-500">{error}</div>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            className="mt-4 px-4 py-2 bg-primary text-white rounded-md transition-opacity hover:opacity-90"
+          >
+            Try Again
+          </button>
+        </div>
+      )}
+
+      {!error && !isInitialLoad && orders.length === 0 && (
+        <div className="text-center">No orders found</div>
+      )}
+
+      {!error && orders.length > 0 && (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
+          {showRefreshState && (
+            <p className="text-sm font-medium text-primary">Updating your orders…</p>
+          )}
+          <div
+            className={`space-y-4 transition-opacity duration-200 ${
+              showRefreshState ? "pointer-events-none opacity-50" : ""
+            }`}
+          >
           {orders.map((order) => (
             <motion.div
               key={order._id}
@@ -182,9 +210,11 @@ const Orders = () => {
               </Card>
             </motion.div>
           ))}
+          </div>
           
-          {hasMore && !isLoadingMore && (
+          {hasMore && !isLoadingMore && !showRefreshState && (
             <button
+              type="button"
               onClick={() => setPage(prev => prev + 1)}
               className="w-full py-2 bg-secondary text-primary rounded-md hover:bg-secondary/90"
             >
@@ -209,6 +239,7 @@ const Orders = () => {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 };
