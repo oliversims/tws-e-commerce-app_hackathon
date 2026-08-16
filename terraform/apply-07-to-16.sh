@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Apply bastion stacks 07_alb-controller → 15_karpenter.
+# Apply bastion stacks 07_alb-controller → 16_logging.
 # Prerequisites: 01–04 + 06 applied, SSH on bastion, kubeconfig ready.
 # Run on the bastion (needs kubectl / Helm access to the private EKS API).
 #
 # Before 13: set Slack webhook api_url in 13_kube-prometheus-stack/values.yaml
 # (bastion only — do not commit). Empty api_url prevents Alertmanager from starting.
 # Before 15: apply 01_vpc + 04_eks so Karpenter discovery tags and IAM exist.
+# Before 16: stacks 07, 08, 10, 11 (ALB, DNS, EBS CSI, StorageClass).
 
 set -euo pipefail
 
@@ -93,5 +94,15 @@ terraform apply --auto-approve
 sleep 15
 
 echo
-echo "Done: 07_alb-controller → 15_karpenter."
+echo "==============================="
+echo "STEP-10: Create logging (Elasticsearch, Filebeat, Kibana) using Terraform"
+echo "==============================="
+cd "${ROOT}/16_logging"
+terraform init
+terraform apply --auto-approve
+sleep 15
+
+echo
+echo "Done: 07_alb-controller → 16_logging."
 echo "Optional check: kubectl get pods -A; kubectl get nodepool,ec2nodeclass"
+echo "Kibana: https://kibana.simsoliver.com"

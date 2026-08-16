@@ -22,6 +22,7 @@ Apply stacks **in folder number order**. Run from your **PC** unless noted.
 | 13 | `13_kube-prometheus-stack` | **Bastion** | Monitoring (Grafana / Prometheus) |
 | 14 | `14_external-secrets` | **Bastion** | External Secrets Operator + IRSA (AWS Secrets Manager) |
 | 15 | `15_karpenter` | **Bastion** | Node autoscaler — extra SPOT workers when pods are Pending |
+| 16 | `16_logging` | **Bastion** | Elasticsearch + Filebeat + Kibana — after `07` `08` `10` `11` |
 
 ## Helpers
 
@@ -30,12 +31,12 @@ Apply stacks **in folder number order**. Run from your **PC** unless noted.
 bash terraform/apply-01-to-06.sh
 
 # Bastion:
-bash terraform/apply-07-to-15.sh
+bash terraform/apply-07-to-16.sh
 ```
 
-Destroy is the reverse: `destroy-15-to-07.sh` on the bastion, then `destroy-06-to-01.sh` on the PC.
+Destroy is the reverse: `destroy-16-to-07.sh` on the bastion, then `destroy-06-to-01.sh` on the PC.
 
-## Bastion workflow (stacks 07–15)
+## Bastion workflow (stacks 07–16)
 
 ```powershell
 cd terraform/06_bastion
@@ -45,7 +46,7 @@ terraform output -raw ssh_command
 sudo cloud-init status --wait
 kubectl get nodes
 cd ~/tws-e-commerce-app_hackathon/terraform
-bash apply-07-to-15.sh
+bash apply-07-to-16.sh
 ```
 
 ## How node scaling works
@@ -71,7 +72,7 @@ Apply `01_vpc` and `04_eks` from your PC **before** `15_karpenter` so discovery 
 | `07_alb-controller`, `10_ebs-csi-driver`, `14_external-secrets`, `15_karpenter` | `04_eks` |
 | `08_external-dns` | `04_eks`, `02_route53_acm` |
 | `11_storage-class` | `10_ebs-csi-driver` |
-| `09_argocd`, `12_metrics-server`, `13_kube-prometheus-stack` | none (Helm only; S3 backend hardcoded) |
+| `09_argocd`, `12_metrics-server`, `13_kube-prometheus-stack`, `16_logging` | none (Helm only; S3 backend hardcoded) |
 
 ## Ingress hostnames (external-dns creates DNS for these)
 
@@ -81,10 +82,11 @@ Set hosts in each app's Ingress; external-dns syncs them to Route 53:
 |-----|------|
 | Argo CD | `09_argocd/values.yaml` — `server.ingress.hostname` |
 | Grafana / Prometheus | `13_kube-prometheus-stack/values.yaml` |
+| Kibana | `helm-values/kibana.yaml` |
 | Easyshop | `kubernetes/ingress.yaml` |
 
 ## Prerequisites
 
 - AWS credentials on your PC
 - SSH public key at `shared/terra-key.pub`
-- Stacks **07–15**: run from **bastion**
+- Stacks **07–16**: run from **bastion**

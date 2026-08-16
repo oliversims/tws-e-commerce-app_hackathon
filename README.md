@@ -102,7 +102,7 @@ Apply stacks in order from [`terraform/README.md`](terraform/README.md). Summary
 
 **On bastion (after SSH in):** `07_alb-controller` → `08_external-dns` → `09_argocd` → `10_ebs-csi-driver` → `11_storage-class` → `12_metrics-server` → `13_kube-prometheus-stack` → `14_external-secrets` → `15_karpenter`
 
-Helpers: `terraform/apply-01-to-06.sh` (PC) then `terraform/apply-07-to-15.sh` (bastion).
+Helpers: `terraform/apply-01-to-06.sh` (PC) then `terraform/apply-07-to-16.sh` (bastion).
 
 ```powershell
 git clone https://github.com/oliversims/tws-e-commerce-app_hackathon.git

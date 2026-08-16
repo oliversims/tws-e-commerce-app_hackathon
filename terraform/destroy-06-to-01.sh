@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Destroy PC stacks 06_bastion → 01_vpc, including 05_jenkins.
-# Prerequisites: bastion stacks 07–15 already destroyed (run destroy-15-to-07.sh first).
+# Prerequisites: bastion stacks 07–16 already destroyed (run destroy-16-to-07.sh first).
 # Run from a machine with AWS credentials (your PC / WSL).
 # Order is the reverse of apply-01-to-06.sh.
 #

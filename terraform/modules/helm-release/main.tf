@@ -1,4 +1,4 @@
-# Reusable Helm chart installer. Used by bastion stacks 07–15.
+# Reusable Helm chart installer. Used by bastion stacks 07–16.
 
 resource "helm_release" "this" {
   namespace        = var.namespace
