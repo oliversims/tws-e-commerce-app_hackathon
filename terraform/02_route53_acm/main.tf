@@ -23,28 +23,21 @@ resource "aws_acm_certificate" "main" {
   }
 }
 
-# Apex + wildcard share one ACM validation CNAME. The ... groups those
-# duplicates so for_each creates a single Route 53 record, not two.
+# Apex + wildcard share one ACM validation CNAME, so one Route 53 record is enough.
+# Do not for_each over domain_validation_options: those names are unknown until
+# the cert is created, and Terraform cannot plan for_each keys that appear at apply.
 resource "aws_route53_record" "cert_validation" {
-  for_each = {
-    for dvo in aws_acm_certificate.main.domain_validation_options : dvo.resource_record_name => {
-      name   = dvo.resource_record_name
-      record = dvo.resource_record_value
-      type   = dvo.resource_record_type
-    }...
-  }
-
   allow_overwrite = true
   zone_id         = aws_route53_zone.main.zone_id
-  name            = each.value[0].name
-  type            = each.value[0].type
+  name            = tolist(aws_acm_certificate.main.domain_validation_options)[0].resource_record_name
+  type            = tolist(aws_acm_certificate.main.domain_validation_options)[0].resource_record_type
   ttl             = 60
-  records         = [each.value[0].record]
+  records         = [tolist(aws_acm_certificate.main.domain_validation_options)[0].resource_record_value]
 }
 
 resource "aws_acm_certificate_validation" "main" {
   certificate_arn         = aws_acm_certificate.main.arn
-  validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
+  validation_record_fqdns = [aws_route53_record.cert_validation.fqdn]
 }
 
 # Domain is registered in Route 53 — keep registrar NS aligned with this hosted zone.

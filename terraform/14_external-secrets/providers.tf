@@ -17,7 +17,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket       = "tfstate-tws-us-east-1-m67t3m"
+    bucket       = "tfstate-tws-us-east-1-pmugrd"
     key          = "14_external-secrets/terraform.tfstate"
     region       = "us-east-1"
     use_lockfile = true
