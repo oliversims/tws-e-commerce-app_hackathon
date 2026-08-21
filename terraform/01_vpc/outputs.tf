@@ -12,11 +12,6 @@ output "vpc_id" {
   value       = module.vpc.vpc_id
 }
 
-output "vpc_cidr" {
-  description = "Used by 04_eks (API and node SSH from inside the VPC)"
-  value       = local.vpc_cidr
-}
-
 output "cluster_name" {
   description = "Used by 04_eks and 06_bastion"
   value       = local.name
@@ -30,4 +25,11 @@ output "public_subnets" {
 output "private_subnets" {
   description = "Used by 04_eks"
   value       = module.vpc.private_subnets
+}
+
+# Hands the identity SG to later stacks. 04_eks uses it as the API source;
+# 06_bastion attaches it to the instance. This output does not create the SG.
+output "eks_api_client_sg_id" {
+  description = "Used by 04_eks (API 443) and 06_bastion (instance attachment)"
+  value       = aws_security_group.eks_api_client.id
 }

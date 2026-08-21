@@ -7,12 +7,12 @@ Apply stacks **in folder number order**. Run from your **PC** unless noted.
 | # | Stack | Where | Notes |
 |---|--------|--------|--------|
 | 00 | `00_state` | PC | S3 state bucket — run once |
-| 01 | `01_vpc` | PC | VPC, subnets, NAT; private subnets tagged for Karpenter |
+| 01 | `01_vpc` | PC | VPC, subnets, NAT, S3 endpoint; private subnets tagged for Karpenter |
 | 02 | `02_route53_acm` | PC | `simsoliver.com` hosted zone + ACM wildcard cert |
 | 03 | `03_keys` | PC | SSH key for EC2 |
-| 04 | `04_eks` | PC | EKS cluster (private API) + Karpenter IAM/SQS |
-| 05 | `05_jenkins` | PC | Jenkins CI EC2 — included in apply-01-to-06.sh |
-| 06 | `06_bastion` | PC | Bastion — apply **after** `04_eks` |
+| 04 | `04_eks` | PC | EKS cluster (private API, bastion SG only) + Karpenter IAM/SQS |
+| 05 | `05_jenkins` | PC | Jenkins CI EC2 — SSH/UI from operator IP |
+| 06 | `06_bastion` | PC | Bastion + EIP — apply **after** `04_eks` |
 | 07 | `07_alb-controller` | **Bastion** | AWS Load Balancer Controller |
 | 08 | `08_external-dns` | **Bastion** | Auto Route 53 records from Ingress hostnames |
 | 09 | `09_argocd` | **Bastion** | Argo CD — apply **after** `07` + `08` |
@@ -51,7 +51,7 @@ bash apply-07-to-16.sh
 
 ## How node scaling works
 
-Terraform `desired_size` on the EKS managed node group is ignored after create. Keep **one** managed node as the bootstrap pool (Karpenter + system pods). When HPA creates extra EasyShop pods that do not fit:
+Terraform `desired_size` on the EKS managed node group is ignored after create. The managed group is **three** SPOT `t3.large` nodes (one per AZ). When HPA creates extra EasyShop pods that do not fit:
 
 1. Pods go **Pending**
 2. Karpenter launches SPOT `t3`/`t3a` nodes in the private subnets
@@ -66,7 +66,7 @@ Apply `01_vpc` and `04_eks` from your PC **before** `15_karpenter` so discovery 
 | Stack | Reads from |
 |-------|------------|
 | `01`–`08`, `10`–`11`, `14`–`15` | `00_state` (bucket, region) |
-| `04_eks` | `01_vpc`, `03_keys` |
+| `04_eks` | `01_vpc` (subnets + EKS API client SG) |
 | `05_jenkins` | `01_vpc`, `03_keys` |
 | `06_bastion` | `01_vpc`, `03_keys`, `04_eks` |
 | `07_alb-controller`, `10_ebs-csi-driver`, `14_external-secrets`, `15_karpenter` | `04_eks` |
@@ -76,14 +76,21 @@ Apply `01_vpc` and `04_eks` from your PC **before** `15_karpenter` so discovery 
 
 ## Ingress hostnames (external-dns creates DNS for these)
 
-Set hosts in each app's Ingress; external-dns syncs them to Route 53:
+Set hosts in each app's Ingress; external-dns syncs them to Route 53.
+
+Public ALB (`easyshop-app-lb`, internet):
+
+| App | File |
+|-----|------|
+| Easyshop | `kubernetes/ingress.yaml` |
+
+Admin ALB (`platform-admin-lb`, operator IP — same CIDR as bastion SSH):
 
 | App | File |
 |-----|------|
 | Argo CD | `09_argocd/values.yaml` — `server.ingress.hostname` |
-| Grafana / Prometheus | `13_kube-prometheus-stack/values.yaml` |
+| Grafana / Prometheus / Alertmanager | `13_kube-prometheus-stack/values.yaml` |
 | Kibana | `helm-values/kibana.yaml` |
-| Easyshop | `kubernetes/ingress.yaml` |
 
 ## Prerequisites
 

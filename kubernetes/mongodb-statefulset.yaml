@@ -1,53 +1,80 @@
 # =============================================================================
 # mongodb-statefulset.yaml
 # =============================================================================
-# This file runs MongoDB as a StatefulSet (stable name mongodb-0 + PVC).
-# Mounts mongodb-pvc at /data/db. Service selector app=mongodb must match labels.
+# The database server. Official image mongo:latest (not built by Jenkins).
+#
+#   Reads K8s Secret mongodb-credentials at pod start
+#     MONGO_INITDB_ROOT_USERNAME / PASSWORD  →  creates the DB user
+#     (only on an EMPTY disk)
+#
+#   Stores files on mongodb-pvc at /data/db.
+#   Reached at mongodb-service:27017.
+#
+# Does NOT copy from AWS itself. The ExternalSecret already did that.
+# If the PVC already has old unauthenticated data, delete StatefulSet + PVC
+# and let Argo recreate (data is lost).
 # =============================================================================
 
 # --- API & Kind ---
-apiVersion: apps/v1                # Apps API for StatefulSets
-kind: StatefulSet                  # Ordered, stable identity for stateful apps
+apiVersion: apps/v1
+kind: StatefulSet                     # Long-running DB with a stable pod name
 
 # --- Identity ---
 metadata:
-  name: mongodb                    # StatefulSet name → pod mongodb-0
-  namespace: easyshop              # App namespace
+  name: mongodb                       # Pod will be mongodb-0
+  namespace: easyshop
 
 # --- Desired state ---
 spec:
-  serviceName: mongodb-service     # Headless/identity link to the MongoDB Service
-  replicas: 1                      # Single MongoDB pod for this project
+  serviceName: mongodb-service        # Identity link to the Service
+  replicas: 1                         # One Mongo pod
 
-  # --- Pod selector ---
+  # --- Which pods this StatefulSet owns ---
   selector:
     matchLabels:
-      app: mongodb                 # Manages pods with this label
+      app: mongodb
 
-  # --- Pod template ---
+  # --- Pod blueprint ---
   template:
     metadata:
       labels:
-        app: mongodb               # Must match selector + Service selector
+        app: mongodb                  # Must match Service selector
     spec:
       containers:
-        - name: mongodb            # Container name inside the pod
-          image: mongo:latest      # Official MongoDB image
+        - name: mongodb
+          image: mongo:latest         # Docker Hub official image
           ports:
-            - containerPort: 27017 # MongoDB listens here
+            - containerPort: 27017    # Mongo listens here
+
+          # --- Auth on first boot (empty PVC only) ---
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-credentials   # K8s copy of AWS easyshop/mongodb
+                  key: username
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-credentials
+                  key: password
+            - name: MONGO_INITDB_DATABASE
+              value: easyshop         # App database created on first boot
+
+          # --- Disk ---
           volumeMounts:
             - name: mongodb-storage
-              mountPath: /data/db  # MongoDB data directory on the PVC
+              mountPath: /data/db     # Where Mongo writes files
           resources:
             requests:
-              memory: "256Mi"      # Minimum memory guaranteed
-              cpu: "250m"          # Minimum CPU (0.25 core)
+              memory: "256Mi"         # Guaranteed memory
+              cpu: "250m"             # Guaranteed CPU
             limits:
-              memory: "512Mi"      # Max memory before OOMKill
-              cpu: "500m"          # Max CPU (0.5 core)
+              memory: "512Mi"         # Max memory before OOMKill
+              cpu: "500m"             # Max CPU
 
-      # --- Volume: bind the PVC ---
+      # --- Bind the PVC ---
       volumes:
-        - name: mongodb-storage    # Volume name referenced by volumeMounts
+        - name: mongodb-storage
           persistentVolumeClaim:
-            claimName: mongodb-pvc # Must match mongodb-pvc.yaml metadata.name
+            claimName: mongodb-pvc    # The disk from mongodb-pvc.yaml

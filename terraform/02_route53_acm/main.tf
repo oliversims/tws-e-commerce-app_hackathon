@@ -4,7 +4,8 @@
 # Outputs feed 08_external-dns; certificate_arn is also used in Ingress YAML.
 
 resource "aws_route53_zone" "main" {
-  name = var.domain_name
+  name          = var.domain_name
+  force_destroy = true
 
   tags = {
     Name = var.domain_name
@@ -22,14 +23,28 @@ resource "aws_acm_certificate" "main" {
   }
 }
 
-# DNS validation CNAME so ACM can issue the cert automatically.
+# Apex + wildcard share one ACM validation CNAME. The ... groups those
+# duplicates so for_each creates a single Route 53 record, not two.
 resource "aws_route53_record" "cert_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.main.domain_validation_options : dvo.resource_record_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }...
+  }
+
   allow_overwrite = true
   zone_id         = aws_route53_zone.main.zone_id
-  name            = tolist(aws_acm_certificate.main.domain_validation_options)[0].resource_record_name
-  type            = tolist(aws_acm_certificate.main.domain_validation_options)[0].resource_record_type
+  name            = each.value[0].name
+  type            = each.value[0].type
   ttl             = 60
-  records         = [tolist(aws_acm_certificate.main.domain_validation_options)[0].resource_record_value]
+  records         = [each.value[0].record]
+}
+
+resource "aws_acm_certificate_validation" "main" {
+  certificate_arn         = aws_acm_certificate.main.arn
+  validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
 }
 
 # Domain is registered in Route 53 — keep registrar NS aligned with this hosted zone.

@@ -1,23 +1,28 @@
 # =============================================================================
 # mongodb-service.yaml
 # =============================================================================
-# This file gives MongoDB a stable DNS name inside the cluster.
-# ConfigMap MONGODB_URI points here: mongodb://mongodb-service:27017/easyshop
+# A stable DNS name inside the cluster. Not MongoDB itself.
+#
+#   Clients (EasyShop, migration)     →     this Service     →     Mongo pod
+#   mongodb-service:27017                   ClusterIP              port 27017
+#
+# Used in MONGODB_URI. Password still comes from mongodb-credentials, not here.
+# Not public on the internet.
 # =============================================================================
 
 # --- API & Kind ---
-apiVersion: v1                     # Core API group
-kind: Service                      # Stable network endpoint for MongoDB pods
+apiVersion: v1
+kind: Service                         # DNS + port. Not the database process.
 
 # --- Identity ---
 metadata:
-  name: mongodb-service            # DNS used by app + migration Job
-  namespace: easyshop              # App namespace
+  name: mongodb-service               # Hostname in MONGODB_URI
+  namespace: easyshop
 
 # --- Networking ---
 spec:
   ports:
-    - port: 27017                  # Port clients call on the Service
-      targetPort: 27017            # Port on the MongoDB container
+    - port: 27017                     # Port clients call
+      targetPort: 27017               # Port on the Mongo container
   selector:
-    app: mongodb                   # Must match StatefulSet pod labels
+    app: mongodb                      # Must match StatefulSet pod labels

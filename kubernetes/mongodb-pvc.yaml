@@ -1,25 +1,30 @@
 # =============================================================================
 # mongodb-pvc.yaml
 # =============================================================================
-# This file requests a 5 GiB persistent disk for MongoDB data (AWS EBS via CSI).
-# Needs: terraform 10_ebs-csi-driver + 11_storage-class (ebs-storage-class).
-# StatefulSet mounts this PVC at /data/db so data survives pod restarts.
+# A request for a disk. Not MongoDB. Not a pod. Nothing runs here.
+#
+#   This PVC          →     AWS EBS volume (~5 GiB)
+#   mongodb-pvc             mounted by mongodb-statefulset at /data/db
+#
+# Data survives pod restarts. Delete this PVC and the database is gone.
+#
+# Needs: terraform 10_ebs-csi-driver + 11_storage-class (ebs-storage-class)
 # =============================================================================
 
 # --- API & Kind ---
-apiVersion: v1                     # Core API group
-kind: PersistentVolumeClaim        # Request for durable storage
+apiVersion: v1
+kind: PersistentVolumeClaim           # "Give me a durable disk"
 
 # --- Identity ---
 metadata:
-  name: mongodb-pvc                # Referenced by StatefulSet volumes.claimName
-  namespace: easyshop              # App namespace
+  name: mongodb-pvc                   # StatefulSet volumes.claimName
+  namespace: easyshop
 
-# --- Storage request ---
+# --- Disk request ---
 spec:
   accessModes:
-    - ReadWriteOnce                # One node/pod mounts read-write (EBS limitation)
-  storageClassName: ebs-storage-class   # Must match terraform/11_storage-class
+    - ReadWriteOnce                   # One node at a time (EBS)
+  storageClassName: ebs-storage-class # How to provision the volume (stack 11)
   resources:
     requests:
-      storage: 5Gi                 # Ask CSI for ~5 GiB EBS volume
+      storage: 5Gi                    # Size of the EBS volume

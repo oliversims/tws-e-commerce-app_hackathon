@@ -3,7 +3,7 @@
 # Run on the bastion (needs kubectl / Helm access to the private EKS API).
 # Order is the reverse of apply-07-to-16.sh.
 #
-# Before running: delete EasyShop + remaining Ingresses (see TEARDOWN.txt Phase 1 / 1b).
+# Before running: delete EasyShop (see TEARDOWN.txt section 1).
 
 set -euo pipefail
 
@@ -16,8 +16,7 @@ echo "==============================="
 cd "${ROOT}/16_logging"
 terraform init
 terraform destroy --auto-approve
-kubectl delete namespace logging --wait=false 2>/dev/null || true
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -26,8 +25,7 @@ echo "==============================="
 cd "${ROOT}/15_karpenter"
 terraform init
 terraform destroy --auto-approve
-kubectl delete namespace karpenter --wait=false 2>/dev/null || true
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -36,8 +34,7 @@ echo "==============================="
 cd "${ROOT}/14_external-secrets"
 terraform init
 terraform destroy --auto-approve
-kubectl delete namespace external-secrets --wait=false 2>/dev/null || true
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -46,8 +43,7 @@ echo "==============================="
 cd "${ROOT}/13_kube-prometheus-stack"
 terraform init
 terraform destroy --auto-approve
-kubectl delete namespace monitoring --wait=false 2>/dev/null || true
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -56,7 +52,7 @@ echo "==============================="
 cd "${ROOT}/12_metrics-server"
 terraform init
 terraform destroy --auto-approve
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -65,7 +61,7 @@ echo "==============================="
 cd "${ROOT}/11_storage-class"
 terraform init
 terraform destroy --auto-approve
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -74,7 +70,7 @@ echo "==============================="
 cd "${ROOT}/10_ebs-csi-driver"
 terraform init
 terraform destroy --auto-approve
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -83,8 +79,7 @@ echo "==============================="
 cd "${ROOT}/09_argocd"
 terraform init
 terraform destroy --auto-approve
-kubectl delete namespace argocd --wait=false 2>/dev/null || true
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -93,7 +88,7 @@ echo "==============================="
 cd "${ROOT}/08_external-dns"
 terraform init
 terraform destroy --auto-approve
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -102,7 +97,7 @@ echo "==============================="
 cd "${ROOT}/07_alb-controller"
 terraform init
 terraform destroy --auto-approve
-sleep 15
+sleep 10
 
 echo
 echo "Done: destroyed 16_logging → 07_alb-controller."

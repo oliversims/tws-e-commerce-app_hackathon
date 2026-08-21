@@ -1,27 +1,6 @@
 # 04_eks — main.tf
-# EKS cluster, managed node group (bootstrap for Karpenter), and core addons.
-# Apply from your PC after 01_vpc and 03_keys. Private API — use bastion/Jenkins.
-
-resource "aws_security_group" "node_group_remote_access" {
-  name   = "${local.name}-node-ssh"
-  vpc_id = data.terraform_remote_state.vpc.outputs.vpc_id
-
-  ingress {
-    description = "SSH from VPC (bastion / Jenkins)"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [data.terraform_remote_state.vpc.outputs.vpc_cidr]
-  }
-
-  egress {
-    description = "allow all outgoing traffic"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
+# EKS cluster, three-AZ managed node group, core addons, Karpenter IAM/SQS.
+# Apply from your PC after 01_vpc. Private API — kubectl via bastion.
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
@@ -34,6 +13,9 @@ module "eks" {
   # Skip module time_sleep before node groups. Default 30s is enough in AWS;
   # terraform-provider-time 0.14.x can hang that wait on WSL.
   dataplane_wait_duration = "0s"
+
+  vpc_id     = data.terraform_remote_state.vpc.outputs.vpc_id
+  subnet_ids = data.terraform_remote_state.vpc.outputs.private_subnets
 
   access_entries = {
     terraform = {
@@ -50,14 +32,16 @@ module "eks" {
     }
   }
 
+  # That block does not create eks-api-client. It says: on the cluster SG that
+  # EKS already owns, allow 443 from whoever has eks-api-client.
   cluster_security_group_additional_rules = {
-    vpc_https = {
-      cidr_blocks = [data.terraform_remote_state.vpc.outputs.vpc_cidr]
-      description = "HTTPS from VPC (bastion / Jenkins)"
-      from_port   = 443
-      to_port     = 443
-      protocol    = "tcp"
-      type        = "ingress"
+    api_from_bastion = {
+      description              = "HTTPS from bastion (eks-api-client SG)"
+      protocol                 = "tcp"
+      from_port                = 443
+      to_port                  = 443
+      type                     = "ingress"
+      source_security_group_id = data.terraform_remote_state.vpc.outputs.eks_api_client_sg_id
     }
   }
 
@@ -68,37 +52,36 @@ module "eks" {
     eks-pod-identity-agent = { most_recent = true }
   }
 
-  vpc_id                   = data.terraform_remote_state.vpc.outputs.vpc_id
-  subnet_ids               = data.terraform_remote_state.vpc.outputs.private_subnets
-  control_plane_subnet_ids = data.terraform_remote_state.vpc.outputs.private_subnets
-
-  eks_managed_node_group_defaults = {
-    instance_types                        = ["t3.large"]
-    attach_cluster_primary_security_group = true
-  }
-
   eks_managed_node_groups = {
     tws-demo-ng = {
-      # Bootstrap node for Karpenter + system pods. Extra workers come from 15_karpenter
-      # (Terraform ignores desired_size after create).
-      min_size     = 1
+      # One managed worker per private subnet (us-east-1a/b/c). Extra capacity
+      # comes from 15_karpenter. Terraform ignores desired_size after create.
+      min_size     = 3
       max_size     = 5
-      desired_size = 1
+      desired_size = 3
 
-      instance_types             = ["t3.large"]
-      capacity_type              = "SPOT"
-      disk_size                  = 35
-      use_custom_launch_template = false
+      instance_types = ["t3.large"]
+      capacity_type  = "SPOT"
+      disk_size      = 35
 
-      remote_access = {
-        ec2_ssh_key               = data.terraform_remote_state.keys.outputs.deployer_key_name
-        source_security_group_ids = [aws_security_group.node_group_remote_access.id]
+      iam_role_additional_policies = {
+        AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
       }
+    }
+  }
 
-      tags = {
-        Name        = "tws-demo-ng"
-        Environment = "dev"
-      }
+  # Module recommended rules already allow control-plane → kubelet/webhooks.
+  # Self-all is required so VPC CNI pods (sharing this SG) can talk across nodes.
+  # ALB → pod rules are added by the AWS Load Balancer Controller (target-type: ip).
+  node_security_group_enable_recommended_rules = true
+  node_security_group_additional_rules = {
+    ingress_self_all = {
+      description = "Node to node (pod-to-pod via VPC CNI)"
+      protocol    = "-1"
+      from_port   = 0
+      to_port     = 0
+      type        = "ingress"
+      self        = true
     }
   }
 

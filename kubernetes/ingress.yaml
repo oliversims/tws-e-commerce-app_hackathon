@@ -1,39 +1,45 @@
 # =============================================================================
 # ingress.yaml
 # =============================================================================
-# This file exposes https://easyshop.simsoliver.com via AWS ALB + ACM TLS.
-# Needs: 07 ALB controller, 08 ExternalDNS, ACM ARN from 02_route53_acm.
-# group.name shares one ALB with Argo CD / Grafana Ingresses.
+# Public HTTPS door. Not the app. Not Mongo. Not a LoadBalancer Service.
+#
+#   Internet  →  ALB (created by stack 07 from this Ingress)
+#             →  easyshop-service:80  →  website pods:3000
+#
+# Hostname easyshop.simsoliver.com: ExternalDNS (stack 08) writes Route 53.
+# TLS cert: ACM from stack 02 (annotation below).
+#
+# This is the public shop ALB (easyshop-app-lb). Admin UIs use platform-admin-lb.
 # =============================================================================
 
 # --- API & Kind ---
-apiVersion: networking.k8s.io/v1   # Networking API for Ingress
-kind: Ingress                      # HTTP(S) routing rules into the cluster
+apiVersion: networking.k8s.io/v1
+kind: Ingress                         # HTTP(S) rules. The ALB controller does AWS.
 
-# --- Identity ---
+# --- Identity + ALB settings ---
 metadata:
-  name: easyshop-ingress           # Name of this Ingress object
-  namespace: easyshop              # App namespace
+  name: easyshop-ingress
+  namespace: easyshop
   annotations:
-    alb.ingress.kubernetes.io/group.name: easyshop-app-lb          # Share one ALB with other apps
-    alb.ingress.kubernetes.io/scheme: internet-facing              # Public ALB (not internal)
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/cfb83bd1-a366-41c1-b5c9-1fc16f01eea9  # ACM TLS cert
-    alb.ingress.kubernetes.io/target-type: ip                      # Register pod IPs (not nodes)
+    alb.ingress.kubernetes.io/group.name: easyshop-app-lb          # Public shop ALB
+    alb.ingress.kubernetes.io/scheme: internet-facing              # Reachable from the internet
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/cfb83bd1-a366-41c1-b5c9-1fc16f01eea9  # ACM cert (stack 02)
+    alb.ingress.kubernetes.io/target-type: ip                      # ALB talks to pod IPs
     alb.ingress.kubernetes.io/backend-protocol: HTTP               # ALB → pods speak HTTP
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'  # ALB listeners
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
     alb.ingress.kubernetes.io/ssl-redirect: '443'                  # Force HTTP → HTTPS
 
-# --- Routing rules ---
+# --- Routing: hostname → Service ---
 spec:
-  ingressClassName: alb            # Use the ALB IngressClass from stack 07
+  ingressClassName: alb               # Stack 07 IngressClass
   rules:
-  - host: easyshop.simsoliver.com  # Public hostname (ExternalDNS creates Route 53 record)
+  - host: easyshop.simsoliver.com     # Public name (not created here; ExternalDNS does DNS)
     http:
       paths:
-      - path: /                    # All paths under this host
-        pathType: Prefix           # Prefix match (/, /api, /login, …)
+      - path: /
+        pathType: Prefix
         backend:
           service:
-            name: easyshop-service # Forward to the easyshop Service
+            name: easyshop-service    # Forward to the Service, not straight to pods
             port:
-              number: 80           # Service port (maps to pod 3000)
+              number: 80

@@ -1,29 +1,45 @@
 # =============================================================================
 # migration-job.yaml
 # =============================================================================
-# This file runs DB migrations once to completion (not a long-running Deployment).
-# Image tag should match the migration image Jenkins pushed.
-# To re-run: kubectl delete job db-migration -n easyshop then sync/apply again.
+# One-shot seed/schema runner. Not the database. Not the website.
+#
+#   Image: simsoliver/easyshop-migration:1  (Jenkins, not mongo:latest)
+#   Connects with the same MONGODB_URI as EasyShop, then exits (Completed).
+#
+# To re-run: delete this Job, then let Argo sync / apply again.
+#   kubectl delete job db-migration -n easyshop
 # =============================================================================
 
 # --- API & Kind ---
-apiVersion: batch/v1               # Batch API for Jobs
-kind: Job                          # Run a pod until it succeeds, then stop
+apiVersion: batch/v1
+kind: Job                             # Run until success, then stop
 
 # --- Identity ---
 metadata:
-  name: db-migration               # Job name (must delete to re-run)
-  namespace: easyshop              # App namespace
+  name: db-migration
+  namespace: easyshop
 
-# --- Job pod template ---
+# --- One-shot pod ---
 spec:
   template:
     spec:
       containers:
-      - name: migration            # Container that runs the migration tool
-        image: simsoliver/easyshop-migration:1
-        imagePullPolicy: Always    # Always pull (don't rely on a stale node cache)
+      - name: migration
+        image: simsoliver/easyshop-migration:1    # Jenkins image, not mongo:latest
+        imagePullPolicy: Always
+
+        # --- Same Mongo URI(Uniform Resource Identifier — a standard address string that says what to connect to and how.) as easyshop-deployment.yaml ---
         env:
-        - name: MONGODB_URI        # Where migrations connect
-          value: "mongodb://mongodb-service:27017/easyshop"  # Cluster DNS to Mongo Service
-      restartPolicy: OnFailure     # Retry the pod if the migration process fails
+        - name: MONGO_USER
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-credentials   # K8s copy of AWS easyshop/mongodb
+              key: username
+        - name: MONGO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-credentials
+              key: password
+        - name: MONGODB_URI
+          value: "mongodb://$(MONGO_USER):$(MONGO_PASSWORD)@mongodb-service:27017/easyshop?authSource=admin"
+      restartPolicy: OnFailure        # Retry the container if the process fails

@@ -7,7 +7,7 @@
 
 # --- Global ---
 global:
-  domain: argocd.simsoliver.com   # Public hostname for Argo CD
+  domain: argocd.simsoliver.com   # Hostname for Argo CD (admin ALB, operator IP)
 
 # --- Server config ---
 configs:
@@ -25,7 +25,8 @@ server:
     annotations:
       alb.ingress.kubernetes.io/scheme: internet-facing
       alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/cfb83bd1-a366-41c1-b5c9-1fc16f01eea9
-      alb.ingress.kubernetes.io/group.name: easyshop-app-lb   # Shared ALB with other apps
+      alb.ingress.kubernetes.io/group.name: platform-admin-lb
+      alb.ingress.kubernetes.io/inbound-cidrs: 68.195.155.202/32  # Must match 05/06 allowed_ssh_cidr
       alb.ingress.kubernetes.io/target-type: ip
       alb.ingress.kubernetes.io/backend-protocol: HTTP
       alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'

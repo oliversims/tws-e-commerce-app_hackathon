@@ -1,37 +1,44 @@
 # =============================================================================
 # easyshop-deployment.yaml
 # =============================================================================
-# This file tells Kubernetes: "Run the easyshop Next.js website as pods"
-# A Deployment keeps N copies running — if one crashes, K8s auto-restarts it.
+# The website. Jenkins image simsoliver/easyshop-app:1. Not Mongo. Not Ingress.
+#
+#   At pod start (not on each user request):
+#     ConfigMap easyshop-config      →  NODE_ENV, URLs
+#     Secret easyshop-secrets        →  JWT_SECRET  (login cookies)
+#     Secret mongodb-credentials     →  MONGO_USER / MONGO_PASSWORD
+#                                       then MONGODB_URI is built from those
+#
+#   User login: check Mongo with MONGODB_URI, sign cookie with JWT_SECRET.
+#
+# HPA may change replica count (2–5). This file sets the pod template.
 # =============================================================================
 
 # --- API & Kind ---
-apiVersion: apps/v1        # Use the "apps" API group, version 1 (standard for Deployments)
-kind: Deployment           # We're creating a Deployment (not a Pod, Service, etc.)
+apiVersion: apps/v1
+kind: Deployment                      # Keep N website pods running
 
 # --- Identity ---
 metadata:
-  name: easyshop           # Name of this Deployment object in Kubernetes
-  namespace: easyshop      # Isolated namespace — keeps easyshop resources separate from others
+  name: easyshop
+  namespace: easyshop
 
-# --- Desired State ---
+# --- Desired state ---
 spec:
-  replicas: 2              # Run 2 identical pods at all times (HPA can scale this to 5)
+  replicas: 2                         # Baseline; HPA can raise this to 5
 
-  # --- Pod Selector ---
+  # --- Which pods this Deployment owns ---
   selector:
     matchLabels:
-      app: easyshop        # This Deployment manages any pod that has label "app=easyshop"
+      app: easyshop
 
-  # --- Pod Template (blueprint for each pod) ---
+  # --- Pod blueprint ---
   template:
     metadata:
       labels:
-        app: easyshop      # Every pod created gets this label (must match selector above)
-
+        app: easyshop                 # Must match Service selector + HPA target
     spec:
-      # --- Hard topology spread: must use different nodes and different AZs ---
-      # Needs 2 Ready nodes in 2 AZs (otherwise the 2nd pod can stay Pending).
+      # --- Place 2 pods on 2 nodes / 2 AZs (2nd stays Pending if that is impossible) ---
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
@@ -51,46 +58,57 @@ spec:
             - pod-template-hash
 
       containers:
-        - name: easyshop                      # Name of the container inside the pod
-          image: simsoliver/easyshop-app:1    # Docker image to run (Docker Hub repo:tag)
-          imagePullPolicy: Always             # Always pull the latest image on pod start (never use cached)
-
-          # --- Exposed Port ---
+        - name: easyshop
+          image: simsoliver/easyshop-app:1    # Jenkins image
+          imagePullPolicy: Always             # Always pull; do not use a stale cache
           ports:
-            - containerPort: 3000             # The Next.js app listens on port 3000 inside the container
+            - containerPort: 3000     # Next.js inside the container
 
-          # --- Environment (from ConfigMap + Secret; no duplicate env: block) ---
+          # --- Non-secret config + JWT (loaded whole at pod start) ---
           envFrom:
             - configMapRef:
-                name: easyshop-config         # MONGODB_URI, NODE_ENV, NEXT_PUBLIC_API_URL, NEXTAUTH_URL
+                name: easyshop-config         # NODE_ENV, NEXT_PUBLIC_API_URL, NEXTAUTH_URL
             - secretRef:
-                name: easyshop-secrets        # JWT_SECRET (from External Secrets / AWS)
+                name: easyshop-secrets        # JWT_SECRET (K8s copy of AWS easyshop/app)
 
-          # --- Resource Limits ---
+          # --- Mongo URI built from the K8s copy of AWS easyshop/mongodb ---
+          env:
+            - name: MONGO_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-credentials
+                  key: username
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-credentials
+                  key: password
+            - name: MONGODB_URI               # Built here; password must be URI-safe
+              value: "mongodb://$(MONGO_USER):$(MONGO_PASSWORD)@mongodb-service:27017/easyshop?authSource=admin"
+
+          # --- CPU / memory ---
           resources:
             requests:
-              memory: "256Mi"   # Minimum memory Kubernetes guarantees this container (256 MB)
-              cpu: "200m"       # Minimum CPU guaranteed (200 millicores = 0.2 of a CPU core)
+              memory: "256Mi"         # Guaranteed memory
+              cpu: "200m"             # Guaranteed CPU
             limits:
-              memory: "512Mi"   # Maximum memory allowed — if exceeded, container is killed (OOMKilled)
-              cpu: "500m"       # Maximum CPU allowed (500 millicores = 0.5 of a CPU core)
+              memory: "512Mi"         # Max memory before OOMKill
+              cpu: "500m"             # Max CPU
 
-          # --- Health Probes ---
-          startupProbe:                       # "Is the app done starting up?"
+          # --- Health checks ---
+          startupProbe:               # Still starting?
             httpGet:
               path: /
               port: 3000
-            failureThreshold: 30             # Allow up to 30 failures before giving up
-            periodSeconds: 10                # Check every 10 seconds → max 30×10 = 5 min to start
-
-          readinessProbe:                     # "Is the app ready to receive traffic?"
+            failureThreshold: 30      # Up to ~5 minutes to become ready
+            periodSeconds: 10
+          readinessProbe:             # Ready for traffic?
             httpGet:
               path: /
               port: 3000
             initialDelaySeconds: 20
             periodSeconds: 15
-
-          livenessProbe:                      # "Is the app still alive?"
+          livenessProbe:              # Still alive?
             httpGet:
               path: /
               port: 3000

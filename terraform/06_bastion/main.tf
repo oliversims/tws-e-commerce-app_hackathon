@@ -1,9 +1,10 @@
 # 06_bastion — main.tf
 # Bastion jump host with IAM role for EKS — kubectl ready after SSH (no aws configure).
-# Apply from your PC after 04_eks. Enables bastion workflow for stacks 07–15.
+# Apply from your PC after 04_eks. Enables bastion workflow for stacks 07–16.
 # Uploads 00_state to S3 (see state_upload.tf) for bastion first-boot terraform.
 
-# Firewall: SSH only from allowed_ssh_cidr (your public IP).
+# This is the bastion's own firewall SG (SSH in, all traffic out).
+# It does not grant EKS API access — that is eks-api-client from 01_vpc.
 resource "aws_security_group" "allow_user_bastion" {
   name        = "bastion_host_SG"
   description = "Allow SSH to bastion from trusted CIDR"
@@ -59,7 +60,7 @@ resource "aws_iam_role_policy" "bastion_eks_describe" {
   })
 }
 
-# S3 + IAM for running terraform stacks 07–15 on the bastion (IRSA roles/policies).
+# S3 + IAM for running terraform stacks 07–16 on the bastion (IRSA roles/policies).
 resource "aws_iam_role_policy" "bastion_terraform_stacks" {
   name = "terraform-stacks-bastion-irsa"
   role = aws_iam_role.bastion.id
@@ -149,12 +150,18 @@ resource "aws_eks_access_policy_association" "bastion" {
 }
 
 # Ubuntu EC2 instance in a public subnet — jump box for kubectl and private API access.
+# Two SGs: bastion_host_SG = SSH/egress; eks-api-client (from 01_vpc) = API identity.
+# This instance does not create eks-api-client; it only wears it.
 resource "aws_instance" "bastion_host" {
-  ami                         = data.aws_ami.os_image.id
-  instance_type               = var.instance_type
-  key_name                    = data.terraform_remote_state.keys.outputs.deployer_key_name
-  vpc_security_group_ids      = [aws_security_group.allow_user_bastion.id]
+  ami           = data.aws_ami.os_image.id
+  instance_type = var.instance_type
+  key_name      = data.terraform_remote_state.keys.outputs.deployer_key_name
+  vpc_security_group_ids = [
+    aws_security_group.allow_user_bastion.id,
+    data.terraform_remote_state.vpc.outputs.eks_api_client_sg_id,
+  ]
   subnet_id                   = data.terraform_remote_state.vpc.outputs.public_subnets[0]
+  associate_public_ip_address = true
   iam_instance_profile        = aws_iam_instance_profile.bastion.name
   user_data_replace_on_change = true
   user_data = templatefile("${path.module}/../shared/scripts/bastion_user_data.sh", {
@@ -177,4 +184,13 @@ resource "aws_instance" "bastion_host" {
     aws_eks_access_policy_association.bastion,
     aws_s3_object.state,
   ]
+}
+
+resource "aws_eip" "bastion" {
+  instance = aws_instance.bastion_host.id
+  domain   = "vpc"
+
+  tags = {
+    Name = "bastion-eip"
+  }
 }

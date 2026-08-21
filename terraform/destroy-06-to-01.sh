@@ -18,7 +18,7 @@ echo "==============================="
 cd "${ROOT}/06_bastion"
 terraform init
 terraform destroy --auto-approve
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -27,7 +27,7 @@ echo "==============================="
 cd "${ROOT}/05_jenkins"
 terraform init
 terraform destroy --auto-approve
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -36,7 +36,7 @@ echo "==============================="
 cd "${ROOT}/04_eks"
 terraform init
 terraform destroy --auto-approve
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -45,7 +45,7 @@ echo "==============================="
 cd "${ROOT}/03_keys"
 terraform init
 terraform destroy --auto-approve
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -54,7 +54,7 @@ echo "==============================="
 cd "${ROOT}/02_route53_acm"
 terraform init
 terraform destroy --auto-approve
-sleep 15
+sleep 10
 
 echo
 echo "==============================="

@@ -1,7 +1,7 @@
 # 04_eks — providers.tf
 # AWS provider region comes from local.region (00_state via state.tf → locals).
 # Remote Terraform state for this stack lives in the S3 bucket from 00_state.
-# Apply from your PC after 01_vpc and 03_keys.
+# Apply from your PC after 01_vpc.
 
 terraform {
   required_version = ">= 1.5"

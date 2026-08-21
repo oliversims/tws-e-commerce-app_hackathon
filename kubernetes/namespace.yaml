@@ -1,15 +1,18 @@
 # =============================================================================
 # namespace.yaml
 # =============================================================================
-# This file tells Kubernetes: "Create an isolated folder named easyshop"
-# All other manifests in this folder set namespace: easyshop so they land here.
-# Apply this file FIRST.
+# A named folder in the cluster. Not a pod, not a disk, not a website.
+#
+#   Everything in kubernetes/ lands here (namespace: easyshop).
+#   Other apps (argocd, logging, monitoring) stay in their own folders.
+#
+# Apply first (or let Argo CreateNamespace=true do it).
 # =============================================================================
 
 # --- API & Kind ---
-apiVersion: v1                 # Core API group (Namespaces live in v1)
-kind: Namespace                # A Namespace isolates names and resources
+apiVersion: v1
+kind: Namespace                       # Isolated name box only
 
 # --- Identity ---
 metadata:
-  name: easyshop               # The namespace name (kubectl get ns easyshop)
+  name: easyshop                      # Folder name. Not the website Deployment.

@@ -1,34 +1,40 @@
 # =============================================================================
 # hpa.yaml
 # =============================================================================
-# This file auto-scales the easyshop Deployment by CPU usage.
-# Needs: terraform 12_metrics-server (CPU metrics) and 15_karpenter (extra nodes
-# when new pods do not fit on the current workers).
+# Replica dial for the website. Not a pod. Does not create Mongo or nodes.
+#
+#   Watches CPU on Deployment easyshop
+#   Keeps average around 70% of requested CPU
+#   Replicas stay between 2 and 5
+#
+# If new pods do not fit, they go Pending; Karpenter (stack 15) may add a node.
+#
+# Needs: terraform 12_metrics-server
 # =============================================================================
 
 # --- API & Kind ---
-apiVersion: autoscaling/v2         # HPA API version 2 (supports resource metrics)
-kind: HorizontalPodAutoscaler      # Scales Deployment replicas up/down
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler         # Changes Deployment replica count only
 
 # --- Identity ---
 metadata:
-  name: easyshop-hpa               # Name of this HPA object
-  namespace: easyshop              # Same namespace as the Deployment
+  name: easyshop-hpa
+  namespace: easyshop
 
-# --- Scale target & bounds ---
+# --- What to scale ---
 spec:
   scaleTargetRef:
-    apiVersion: apps/v1            # Target is a Deployment
+    apiVersion: apps/v1
     kind: Deployment
-    name: easyshop                 # Must match Deployment metadata.name
-  minReplicas: 2                   # Never scale below 2 pods
-  maxReplicas: 5                   # Never scale above 5 pods
+    name: easyshop                    # Must match easyshop-deployment.yaml
+  minReplicas: 2                      # Never below 2
+  maxReplicas: 5                      # Never above 5
 
-  # --- Metric: keep average CPU around 70% ---
+  # --- When to scale ---
   metrics:
-    - type: Resource               # Built-in resource metric (CPU/memory)
+    - type: Resource
       resource:
-        name: cpu                  # Scale on CPU utilization
+        name: cpu
         target:
-          type: Utilization        # Percentage of requests
-          averageUtilization: 70   # Target ~70% of requested CPU across pods
+          type: Utilization
+          averageUtilization: 70      # Aim for ~70% of requested CPU

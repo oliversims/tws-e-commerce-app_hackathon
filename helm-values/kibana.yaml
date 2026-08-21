@@ -3,7 +3,7 @@
 # =============================================================================
 # Helm values for Kibana (log UI). Chart: elastic/kibana 8.5.1
 # Connects to elasticsearch-master using Shared Secrets from the ES chart.
-# Public UI: https://kibana.simsoliver.com (ALB + ExternalDNS).
+# Public UI: https://kibana.simsoliver.com (admin ALB, operator IP).
 # Install: helm upgrade --install my-kibana ... -f helm-values/kibana.yaml
 # =============================================================================
 
@@ -31,8 +31,9 @@ ingress:
   className: "alb"                                                   # AWS Load Balancer Controller IngressClass
   pathtype: Prefix                                                   # Match paths by prefix
   annotations:
-    alb.ingress.kubernetes.io/group.name: easyshop-app-lb            # Share one ALB with EasyShop / Argo / etc.
-    alb.ingress.kubernetes.io/scheme: internet-facing                # Public ALB
+    alb.ingress.kubernetes.io/group.name: platform-admin-lb
+    alb.ingress.kubernetes.io/inbound-cidrs: 68.195.155.202/32
+    alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip                        # Register pod IPs
     alb.ingress.kubernetes.io/backend-protocol: HTTP                 # ALB → Kibana speaks HTTP
     alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/cfb83bd1-a366-41c1-b5c9-1fc16f01eea9  # Same ACM as EasyShop

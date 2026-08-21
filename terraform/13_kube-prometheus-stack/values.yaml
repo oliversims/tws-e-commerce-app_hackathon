@@ -26,7 +26,7 @@ alertmanager:
           - api_url: ''            # Set on bastion only — do not commit webhook URLs
             channel: '#alerts'     # Slack channel name
             send_resolved: true    # Also notify when alerts clear
-  # Public HTTPS UI: https://alertmanager.simsoliver.com
+  # Admin HTTPS UI (operator IP only): https://alertmanager.simsoliver.com
   ingress:
     enabled: true
     ingressClassName: alb
@@ -36,7 +36,8 @@ alertmanager:
       - /
     pathType: Prefix
     annotations:
-      alb.ingress.kubernetes.io/group.name: easyshop-app-lb
+      alb.ingress.kubernetes.io/group.name: platform-admin-lb
+      alb.ingress.kubernetes.io/inbound-cidrs: 68.195.155.202/32
       alb.ingress.kubernetes.io/scheme: internet-facing
       alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/cfb83bd1-a366-41c1-b5c9-1fc16f01eea9
       alb.ingress.kubernetes.io/target-type: ip
@@ -47,7 +48,7 @@ alertmanager:
 # --- Grafana: dashboards UI; queries Prometheus (chart default datasource) ---
 grafana:
   enabled: true
-  # Public HTTPS UI: https://grafana.simsoliver.com
+  # Admin HTTPS UI (operator IP only): https://grafana.simsoliver.com
   ingress:
     enabled: true
     ingressClassName: alb
@@ -55,7 +56,8 @@ grafana:
       - grafana.simsoliver.com
     path: /
     annotations:
-      alb.ingress.kubernetes.io/group.name: easyshop-app-lb
+      alb.ingress.kubernetes.io/group.name: platform-admin-lb
+      alb.ingress.kubernetes.io/inbound-cidrs: 68.195.155.202/32
       alb.ingress.kubernetes.io/scheme: internet-facing
       alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/cfb83bd1-a366-41c1-b5c9-1fc16f01eea9
       alb.ingress.kubernetes.io/target-type: ip
@@ -65,7 +67,7 @@ grafana:
 # --- Prometheus: scrapes exporters, stores metrics, alerts → Alertmanager ---
 prometheus:
   enabled: true
-  # Public HTTPS UI: https://prometheus.simsoliver.com
+  # Admin HTTPS UI (operator IP only): https://prometheus.simsoliver.com
   ingress:
     enabled: true
     ingressClassName: alb
@@ -75,7 +77,8 @@ prometheus:
       - /
     pathType: Prefix
     annotations:
-      alb.ingress.kubernetes.io/group.name: easyshop-app-lb
+      alb.ingress.kubernetes.io/group.name: platform-admin-lb
+      alb.ingress.kubernetes.io/inbound-cidrs: 68.195.155.202/32
       alb.ingress.kubernetes.io/scheme: internet-facing
       alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/cfb83bd1-a366-41c1-b5c9-1fc16f01eea9
       alb.ingress.kubernetes.io/target-type: ip

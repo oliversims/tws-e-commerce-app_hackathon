@@ -6,3 +6,10 @@ variable "instance_type" {
   type        = string
   default     = "t3.medium"
 }
+
+# Same CIDR as 06_bastion. Update both if your home/office IP changes.
+variable "allowed_ssh_cidr" {
+  description = "CIDR allowed to SSH and reach the Jenkins UI (use your public IP /32)"
+  type        = string
+  default     = "68.195.155.202/32"
+}

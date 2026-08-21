@@ -19,7 +19,7 @@ echo "==============================="
 cd "${ROOT}/07_alb-controller"
 terraform init
 terraform apply --auto-approve
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -28,7 +28,7 @@ echo "==============================="
 cd "${ROOT}/08_external-dns"
 terraform init
 terraform apply --auto-approve
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -37,7 +37,7 @@ echo "==============================="
 cd "${ROOT}/09_argocd"
 terraform init
 terraform apply --auto-approve
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -46,7 +46,7 @@ echo "==============================="
 cd "${ROOT}/10_ebs-csi-driver"
 terraform init
 terraform apply --auto-approve
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -55,7 +55,7 @@ echo "==============================="
 cd "${ROOT}/11_storage-class"
 terraform init
 terraform apply --auto-approve
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -64,7 +64,7 @@ echo "==============================="
 cd "${ROOT}/12_metrics-server"
 terraform init
 terraform apply --auto-approve
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -73,7 +73,7 @@ echo "==============================="
 cd "${ROOT}/13_kube-prometheus-stack"
 terraform init
 terraform apply --auto-approve
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -82,7 +82,7 @@ echo "==============================="
 cd "${ROOT}/14_external-secrets"
 terraform init
 terraform apply --auto-approve
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -91,7 +91,7 @@ echo "==============================="
 cd "${ROOT}/15_karpenter"
 terraform init
 terraform apply --auto-approve
-sleep 15
+sleep 10
 
 echo
 echo "==============================="
@@ -100,9 +100,9 @@ echo "==============================="
 cd "${ROOT}/16_logging"
 terraform init
 terraform apply --auto-approve
-sleep 15
+sleep 10
 
 echo
 echo "Done: 07_alb-controller → 16_logging."
-echo "Optional check: kubectl get pods -A; kubectl get nodepool,ec2nodeclass"
+echo "check: kubectl get pods -A; kubectl get nodepool,ec2nodeclass"
 echo "Kibana: https://kibana.simsoliver.com"

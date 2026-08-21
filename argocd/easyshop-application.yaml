@@ -1,31 +1,43 @@
 # =============================================================================
 # easyshop-application.yaml
 # =============================================================================
-# Argo CD Application CR — same as "New App" in the UI.
-# Apply on the bastion (needs Argo CD CRDs from stack 09):
-#   kubectl apply -f argocd/easyshop-application.yaml
+# Tells Argo CD: "keep kubernetes/ from Git in sync with the cluster."
+# Not the website. Not Mongo. Apply this once; Argo applies the rest.
+#
+#   GitHub  path kubernetes/  (branch master)
+#      →  namespace easyshop
+#
+#   kubectl apply -f argocd/easyshop-application.yaml   (bastion, after stack 09)
 # =============================================================================
 
+# --- API & Kind ---
 apiVersion: argoproj.io/v1alpha1
-kind: Application
+kind: Application                     # Argo CD watch job. Not a Kubernetes Deployment.
+
+# --- Identity (lives in argocd, not easyshop) ---
 metadata:
-  name: easyshop                    # App name in Argo CD
-  namespace: argocd                 # Applications live in the argocd namespace
+  name: easyshop                      # Name in the Argo CD UI
+  namespace: argocd                   # Applications live here, not in easyshop
+
+# --- What to sync ---
 spec:
   project: default
 
+  # --- Git source ---
   source:
     repoURL: https://github.com/oliversims/tws-e-commerce-app_hackathon.git
-    targetRevision: master          # Git branch/tag
-    path: kubernetes                # Folder Argo syncs
+    targetRevision: master            # Git branch
+    path: kubernetes                  # Folder Argo syncs (the files in kubernetes/)
 
+  # --- Cluster destination ---
   destination:
-    server: https://kubernetes.default.svc   # In-cluster API
-    namespace: easyshop                      # Where resources are created
+    server: https://kubernetes.default.svc
+    namespace: easyshop               # Where those manifests are created
 
+  # --- Auto-sync ---
   syncPolicy:
     automated:
-      prune: true                   # Delete cluster resources removed from Git
-      selfHeal: true                # Revert manual drift on the cluster
+      prune: true                     # Delete cluster objects removed from Git
+      selfHeal: true                  # Undo manual kubectl edits
     syncOptions:
-      - CreateNamespace=true        # Create namespace easyshop if missing
+      - CreateNamespace=true          # Create namespace easyshop if missing

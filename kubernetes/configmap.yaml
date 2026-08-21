@@ -1,23 +1,28 @@
 # =============================================================================
 # configmap.yaml
 # =============================================================================
-# This file stores non-secret app settings as key/value pairs.
-# The Deployment loads these as environment variables (envFrom).
-# Secrets (JWT, Mongo passwords) come from External Secrets → AWS Secrets Manager.
+# Non-secret settings for EasyShop. Safe to put in Git.
+#
+#   This ConfigMap     →     EasyShop pod env
+#   easyshop-config          NODE_ENV, NEXT_PUBLIC_API_URL, NEXTAUTH_URL
+#
+# Does NOT hold JWT or Mongo passwords. Those are K8s Secrets copied from AWS.
+# Does NOT hold MONGODB_URI. The Deployment builds that from mongodb-credentials.
+#
+# Used by: easyshop-deployment.yaml (envFrom)
 # =============================================================================
 
 # --- API & Kind ---
-apiVersion: v1                 # Core API group
-kind: ConfigMap                # Non-sensitive configuration data
+apiVersion: v1
+kind: ConfigMap                       # Plain config. Not a Secret.
 
 # --- Identity ---
 metadata:
-  name: easyshop-config        # Referenced by Deployment as configMapRef / configMapKeyRef
-  namespace: easyshop          # Must match the easyshop Namespace
+  name: easyshop-config               # Deployment configMapRef name
+  namespace: easyshop
 
-# --- Data (plain strings → pod env vars) ---
+# --- Values loaded as env vars (envFrom) ---
 data:
-  MONGODB_URI: "mongodb://mongodb-service:27017/easyshop"   # App DB URL (cluster DNS to Mongo Service)
-  NODE_ENV: "production"                                    # Next.js production mode
+  NODE_ENV: "production"                                      # Next.js production mode
   NEXT_PUBLIC_API_URL: "https://easyshop.simsoliver.com/api"  # Browser-facing API base URL
-  NEXTAUTH_URL: "https://easyshop.simsoliver.com/"          # Auth callbacks/redirects (must match Ingress host)
+  NEXTAUTH_URL: "https://easyshop.simsoliver.com/"            # Must match the public hostname

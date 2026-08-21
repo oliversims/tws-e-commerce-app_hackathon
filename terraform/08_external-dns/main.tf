@@ -63,7 +63,7 @@ module "external_dns" {
 
   values = [templatefile("${path.module}/values.yaml", {
     role_arn       = module.iam_role.iam_role_arn
-    domain_name    = var.domain_name
+    domain_name    = data.terraform_remote_state.route53_acm.outputs.domain_name
     region         = local.region
     txt_owner_id   = data.terraform_remote_state.eks.outputs.eks_cluster_name
     hosted_zone_id = data.terraform_remote_state.route53_acm.outputs.hosted_zone_id
