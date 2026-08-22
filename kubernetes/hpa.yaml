@@ -5,7 +5,7 @@
 #
 #   Watches CPU on Deployment easyshop
 #   Keeps average around 70% of requested CPU
-#   Replicas stay between 2 and 5
+#   Replicas stay between 3 and 5
 #
 # If new pods do not fit, they go Pending; Karpenter (stack 15) may add a node.
 #
@@ -27,7 +27,7 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: easyshop                    # Must match easyshop-deployment.yaml
-  minReplicas: 2                      # Never below 2
+  minReplicas: 3                      # Never below 3
   maxReplicas: 5                      # Never above 5
 
   # --- When to scale ---

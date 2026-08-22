@@ -11,7 +11,7 @@
 #
 #   User login: check Mongo with MONGODB_URI, sign cookie with JWT_SECRET.
 #
-# HPA may change replica count (2–5). This file sets the pod template.
+# HPA may change replica count (3–5). This file sets the pod template.
 # =============================================================================
 
 # --- API & Kind ---
@@ -25,7 +25,7 @@ metadata:
 
 # --- Desired state ---
 spec:
-  replicas: 2                         # Baseline; HPA can raise this to 5
+  replicas: 3                         # Baseline; HPA can raise this to 5
 
   # --- Which pods this Deployment owns ---
   selector:
@@ -38,7 +38,7 @@ spec:
       labels:
         app: easyshop                 # Must match Service selector + HPA target
     spec:
-      # --- Place 2 pods on 2 nodes / 2 AZs (2nd stays Pending if that is impossible) ---
+      # --- Spread across nodes and AZs (Pending if a 3rd node/AZ is impossible) ---
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
