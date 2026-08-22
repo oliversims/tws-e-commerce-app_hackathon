@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
       - name: migration
-        image: simsoliver/easyshop-migration:1    # Jenkins image, not mongo:latest
+        image: simsoliver/easyshop-migration:1
         imagePullPolicy: Always
 
         # --- Same Mongo URI(Uniform Resource Identifier — a standard address string that says what to connect to and how.) as easyshop-deployment.yaml ---

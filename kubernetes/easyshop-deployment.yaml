@@ -59,7 +59,7 @@ spec:
 
       containers:
         - name: easyshop
-          image: simsoliver/easyshop-app:1    # Jenkins image
+          image: simsoliver/easyshop-app:1
           imagePullPolicy: Always             # Always pull; do not use a stale cache
           ports:
             - containerPort: 3000     # Next.js inside the container
