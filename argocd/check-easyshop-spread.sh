@@ -2,8 +2,11 @@
 # =============================================================================
 # check-easyshop-spread.sh
 # =============================================================================
-# Shows WHERE EasyShop pods landed (node + AZ) in a clear visual layout,
-# then confirms node spread and AZ spread.
+# Shows WHERE EasyShop pods landed (node + AZ), then checks topology spread.
+# Matches kubernetes/easyshop-deployment.yaml:
+#   replicas: 3
+#   maxSkew: 1 on kubernetes.io/hostname and topology.kubernetes.io/zone
+#   whenUnsatisfiable: DoNotSchedule
 #
 #   chmod +x argocd/check-easyshop-spread.sh
 #   ./argocd/check-easyshop-spread.sh
@@ -13,7 +16,7 @@ set -euo pipefail
 
 NAMESPACE="easyshop"
 POD_LABEL="app=easyshop"
-MIN_PODS=2
+MAX_SKEW=1
 
 # -----------------------------------------------------------------------------
 # Helpers
@@ -26,8 +29,41 @@ zone_of_node() {
     2>/dev/null || echo "unknown"
 }
 
+count_on() {
+  local needle="$1"
+  local field="$2"
+  local n=0
+  while IFS='|' read -r P N Z; do
+    [[ -z "${P:-}" ]] && continue
+    if [[ "${field}" == "node" && "${N}" == "${needle}" ]]; then
+      n=$((n + 1))
+    elif [[ "${field}" == "zone" && "${Z}" == "${needle}" ]]; then
+      n=$((n + 1))
+    fi
+  done <<< "${POD_LINES}"
+  echo "${n}"
+}
+
+skew_of() {
+  local field="$1"
+  shift
+  local min="" max=""
+  for item in "$@"; do
+    [[ -z "${item}" ]] && continue
+    local c
+    c=$(count_on "${item}" "${field}")
+    if [[ -z "${min}" || "${c}" -lt "${min}" ]]; then min="${c}"; fi
+    if [[ -z "${max}" || "${c}" -gt "${max}" ]]; then max="${c}"; fi
+  done
+  if [[ -z "${min}" ]]; then
+    echo "0"
+    return
+  fi
+  echo $((max - min))
+}
+
 # =============================================================================
-# STEP 1 — Cluster capacity (what we can spread onto)
+# STEP 1 — Cluster capacity
 # =============================================================================
 echo
 echo "================================================================="
@@ -42,13 +78,19 @@ hr | sed 's/^/  /'
 
 READY_NODE_COUNT=0
 ALL_ZONES=""
+MAP_NODES=""
 
 while read -r NODE STATUS _; do
   [[ -z "${NODE:-}" ]] && continue
   ZONE=$(zone_of_node "${NODE}")
-  printf "  %-28s  %-14s  %s\n" "${NODE%%.*}" "${ZONE}" "${STATUS}"
+  SHORT="${NODE%%.*}"
+  printf "  %-28s  %-14s  %s\n" "${SHORT}" "${ZONE}" "${STATUS}"
   if [[ "${STATUS}" == Ready* ]]; then
     READY_NODE_COUNT=$((READY_NODE_COUNT + 1))
+    case " ${MAP_NODES} " in
+      *" ${SHORT} "*) ;;
+      *) MAP_NODES="${MAP_NODES} ${SHORT}" ;;
+    esac
     case " ${ALL_ZONES} " in
       *" ${ZONE} "*) ;;
       *) ALL_ZONES="${ALL_ZONES} ${ZONE}" ;;
@@ -58,19 +100,29 @@ done < <(kubectl get nodes --no-headers | awk '{print $1, $2}')
 
 CLUSTER_ZONE_COUNT=$(echo "${ALL_ZONES}" | wc -w | tr -d ' ')
 
+DESIRED=$(kubectl get deploy easyshop -n "${NAMESPACE}" \
+  -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "")
+MIN_PODS="${DESIRED:-3}"
+
 echo
 echo "  Ready nodes : ${READY_NODE_COUNT}"
 echo "  Ready AZs   : ${CLUSTER_ZONE_COUNT}  ($(echo ${ALL_ZONES}))"
+echo "  Desired pods: ${MIN_PODS}  (Deployment spec.replicas / HPA)"
 echo
 
 # =============================================================================
-# STEP 2 — Collect Running easyshop pods
+# STEP 2 — Collect easyshop pods
 # =============================================================================
 POD_ROWS=$(
   kubectl get pods -n "${NAMESPACE}" -l "${POD_LABEL}" \
     --field-selector=status.phase=Running \
     -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.nodeName}{"\n"}{end}' \
     2>/dev/null || true
+)
+
+PENDING_ROWS=$(
+  kubectl get pods -n "${NAMESPACE}" -l "${POD_LABEL}" --no-headers 2>/dev/null \
+    | awk '$3=="Pending" {print $1}' || true
 )
 
 if [[ -z "${POD_ROWS}" ]]; then
@@ -81,22 +133,25 @@ if [[ -z "${POD_ROWS}" ]]; then
   echo "  No Running easyshop pods in namespace '${NAMESPACE}'."
   echo "  Deploy first: kubectl apply -f argocd/easyshop-application.yaml"
   echo
+  if [[ -n "${PENDING_ROWS}" ]]; then
+    echo "  Pending pods (spread may be blocking schedule):"
+    echo "${PENDING_ROWS}" | sed 's/^/    /'
+    echo
+  fi
   exit 1
 fi
 
 POD_COUNT=0
 SEEN_NODES=""
 SEEN_ZONES=""
-# Parallel arrays via newline lists for bash 4 portability without assoc arrays for display
 POD_LINES=""
 
 while IFS=$'\t' read -r POD_NAME NODE_NAME; do
   [[ -z "${POD_NAME:-}" ]] && continue
   ZONE_NAME=$(zone_of_node "${NODE_NAME}")
   SHORT_NODE="${NODE_NAME%%.*}"
-  SHORT_POD="${POD_NAME}"
 
-  POD_LINES="${POD_LINES}${SHORT_POD}|${SHORT_NODE}|${ZONE_NAME}"$'\n'
+  POD_LINES="${POD_LINES}${POD_NAME}|${SHORT_NODE}|${ZONE_NAME}"$'\n'
   POD_COUNT=$((POD_COUNT + 1))
 
   case " ${SEEN_NODES} " in
@@ -111,6 +166,9 @@ done <<< "${POD_ROWS}"
 
 UNIQUE_NODE_COUNT=$(echo "${SEEN_NODES}" | wc -w | tr -d ' ')
 UNIQUE_ZONE_COUNT=$(echo "${SEEN_ZONES}" | wc -w | tr -d ' ')
+
+NODE_SKEW=$(skew_of node ${MAP_NODES})
+ZONE_SKEW=$(skew_of zone ${ALL_ZONES})
 
 # =============================================================================
 # STEP 2a — Simple table
@@ -129,26 +187,30 @@ done <<< "${POD_LINES}"
 
 echo
 echo "  Total Running pods : ${POD_COUNT}"
+if [[ -n "${PENDING_ROWS}" ]]; then
+  echo "  Pending pods       :"
+  echo "${PENDING_ROWS}" | sed 's/^/    /'
+  echo "  (Pending + DoNotSchedule usually means spread could not place the pod.)"
+fi
 echo
 
 # =============================================================================
-# STEP 2b — Visual map by AZ (this is the "spread picture")
+# STEP 3 — Visual map by AZ
 # =============================================================================
 echo "================================================================="
 echo " STEP 3: Spread map (pods grouped by availability zone)"
 echo "================================================================="
 echo
-echo "  Ideal with 2 replicas + 2 AZs:"
+echo "  Ideal with ${MIN_PODS} replicas and 3 AZs (maxSkew ${MAX_SKEW}):"
 echo
-echo "       us-east-1a              us-east-1b"
-echo "      +----------------+      +----------------+"
-echo "      |  1 easyshop    |      |  1 easyshop    |"
-echo "      +----------------+      +----------------+"
+echo "       us-east-1a              us-east-1b              us-east-1c"
+echo "      +----------------+      +----------------+      +----------------+"
+echo "      |  1 easyshop    |      |  1 easyshop    |      |  1 easyshop    |"
+echo "      +----------------+      +----------------+      +----------------+"
 echo
 echo "  Actual placement now:"
 echo
 
-# Build unique zone list from pods (and show empty Ready AZs with 0 pods)
 MAP_ZONES="${SEEN_ZONES}"
 for Z in ${ALL_ZONES}; do
   case " ${MAP_ZONES} " in
@@ -181,28 +243,15 @@ for ZONE in ${MAP_ZONES}; do
 done
 
 # =============================================================================
-# STEP 2c — Visual map by NODE
+# STEP 4 — Visual map by NODE
 # =============================================================================
 echo "================================================================="
 echo " STEP 4: Spread map (pods grouped by worker node)"
 echo "================================================================="
 echo
 
-# Unique nodes from cluster Ready set + pods
-MAP_NODES=""
-while read -r NODE STATUS _; do
-  [[ -z "${NODE:-}" ]] && continue
-  [[ "${STATUS}" != Ready* ]] && continue
-  SHORT="${NODE%%.*}"
-  case " ${MAP_NODES} " in
-    *" ${SHORT} "*) ;;
-    *) MAP_NODES="${MAP_NODES} ${SHORT}" ;;
-  esac
-done < <(kubectl get nodes --no-headers | awk '{print $1, $2}')
-
 for NODE in ${MAP_NODES}; do
   NODE_ZONE="?"
-  # find zone for this short node name from pod lines or kubectl
   FULL_NODE=$(kubectl get nodes --no-headers | awk -v s="${NODE}" '$1 ~ s {print $1; exit}')
   if [[ -n "${FULL_NODE}" ]]; then
     NODE_ZONE=$(zone_of_node "${FULL_NODE}")
@@ -231,7 +280,7 @@ for NODE in ${MAP_NODES}; do
 done
 
 # =============================================================================
-# STEP 5 — Pass / fail
+# STEP 5 — Pass / fail (maxSkew 1 across ALL ready nodes and AZs)
 # =============================================================================
 echo "================================================================="
 echo " STEP 5: Did spread succeed?"
@@ -242,8 +291,10 @@ FAIL_COUNT=0
 
 echo "  Summary counts"
 echo "    Running easyshop pods : ${POD_COUNT}   (need ${MIN_PODS}+)"
-echo "    Distinct nodes used   : ${UNIQUE_NODE_COUNT}   (need 2 for node spread)"
-echo "    Distinct AZs used     : ${UNIQUE_ZONE_COUNT}   (need 2 for AZ spread)"
+echo "    Distinct nodes used   : ${UNIQUE_NODE_COUNT}"
+echo "    Distinct AZs used     : ${UNIQUE_ZONE_COUNT}"
+echo "    Hostname skew         : ${NODE_SKEW}   (need <= ${MAX_SKEW}; counts empty Ready nodes)"
+echo "    Zone skew             : ${ZONE_SKEW}   (need <= ${MAX_SKEW}; counts empty Ready AZs)"
 echo
 
 if [[ "${POD_COUNT}" -ge "${MIN_PODS}" ]]; then
@@ -253,21 +304,28 @@ else
   FAIL_COUNT=$((FAIL_COUNT + 1))
 fi
 
-if [[ "${UNIQUE_NODE_COUNT}" -ge 2 ]]; then
-  echo "  [OK]   NODE spread  — each pod is on a DIFFERENT worker"
-elif [[ "${READY_NODE_COUNT}" -lt 2 ]]; then
-  echo "  [SKIP] NODE spread  — cluster only has ${READY_NODE_COUNT} Ready node"
+if [[ -n "${PENDING_ROWS}" ]]; then
+  echo "  [FAIL] Pending pods — scheduler could not place at least one replica"
+  FAIL_COUNT=$((FAIL_COUNT + 1))
 else
-  echo "  [FAIL] NODE spread  — both pods share the SAME worker"
+  echo "  [OK]   No Pending easyshop pods"
+fi
+
+if [[ "${READY_NODE_COUNT}" -lt 2 ]]; then
+  echo "  [SKIP] NODE spread  — cluster only has ${READY_NODE_COUNT} Ready node"
+elif [[ "${NODE_SKEW}" -le "${MAX_SKEW}" ]]; then
+  echo "  [OK]   NODE spread  — hostname maxSkew ${NODE_SKEW} <= ${MAX_SKEW}"
+else
+  echo "  [FAIL] NODE spread  — hostname maxSkew ${NODE_SKEW} > ${MAX_SKEW}"
   FAIL_COUNT=$((FAIL_COUNT + 1))
 fi
 
-if [[ "${UNIQUE_ZONE_COUNT}" -ge 2 ]]; then
-  echo "  [OK]   AZ spread    — each pod is in a DIFFERENT zone"
-elif [[ "${READY_NODE_COUNT}" -lt 2 ]]; then
+if [[ "${CLUSTER_ZONE_COUNT}" -lt 2 ]]; then
   echo "  [SKIP] AZ spread    — need Ready nodes in 2 AZs first"
+elif [[ "${ZONE_SKEW}" -le "${MAX_SKEW}" ]]; then
+  echo "  [OK]   AZ spread    — zone maxSkew ${ZONE_SKEW} <= ${MAX_SKEW}"
 else
-  echo "  [FAIL] AZ spread    — both pods are in the SAME zone"
+  echo "  [FAIL] AZ spread    — zone maxSkew ${ZONE_SKEW} > ${MAX_SKEW}"
   FAIL_COUNT=$((FAIL_COUNT + 1))
 fi
 
@@ -277,19 +335,19 @@ echo " RESULT"
 echo "================================================================="
 echo
 
-if [[ "${FAIL_COUNT}" -eq 0 && "${UNIQUE_NODE_COUNT}" -ge 2 && "${UNIQUE_ZONE_COUNT}" -ge 2 ]]; then
-  echo "  SUCCESS — EasyShop IS spread across nodes AND AZs."
+if [[ "${FAIL_COUNT}" -eq 0 && "${NODE_SKEW}" -le "${MAX_SKEW}" && "${ZONE_SKEW}" -le "${MAX_SKEW}" && "${POD_COUNT}" -ge "${MIN_PODS}" ]]; then
+  echo "  SUCCESS — EasyShop is spread within maxSkew ${MAX_SKEW} on nodes AND AZs."
   echo
   echo "  Picture:"
-  echo "    Zone A  -->  1 pod"
-  echo "    Zone B  -->  1 pod"
+  for ZONE in ${MAP_ZONES}; do
+    echo "    ${ZONE}  -->  $(count_on "${ZONE}" zone) pod(s)"
+  done
   echo
   exit 0
 fi
 
 if [[ "${FAIL_COUNT}" -eq 0 ]]; then
-  echo "  PARTIAL — no hard failures, but full multi-AZ spread"
-  echo "  needs 2 Ready nodes in 2 different zones."
+  echo "  PARTIAL — no hard failures, but full spread needs more Ready nodes/AZs."
   echo
   exit 0
 fi

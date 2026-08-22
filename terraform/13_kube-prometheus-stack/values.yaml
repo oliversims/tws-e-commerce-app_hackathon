@@ -8,6 +8,10 @@
 # --- Alertmanager: routes critical alerts to Slack; UI via ALB ---
 alertmanager:
   enabled: true
+  # One replica is enough. Cluster gossip is off by default, so Status shows
+  # "disabled". This turns gossip on so Status shows ready (still 1 pod, not HA).
+  alertmanagerSpec:
+    forceEnableClusterMode: true
   # Routing tree and Slack receiver
   config:
     route:
@@ -39,7 +43,7 @@ alertmanager:
       alb.ingress.kubernetes.io/group.name: platform-admin-lb
       alb.ingress.kubernetes.io/inbound-cidrs: 68.195.155.202/32
       alb.ingress.kubernetes.io/scheme: internet-facing
-      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/655f7999-ceaf-4c25-91ae-0f18d4006906
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/6cce1763-9f80-40b5-a8e0-73c7b8641396
       alb.ingress.kubernetes.io/target-type: ip
       alb.ingress.kubernetes.io/backend-protocol: HTTP
       alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
@@ -59,7 +63,7 @@ grafana:
       alb.ingress.kubernetes.io/group.name: platform-admin-lb
       alb.ingress.kubernetes.io/inbound-cidrs: 68.195.155.202/32
       alb.ingress.kubernetes.io/scheme: internet-facing
-      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/655f7999-ceaf-4c25-91ae-0f18d4006906
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/6cce1763-9f80-40b5-a8e0-73c7b8641396
       alb.ingress.kubernetes.io/target-type: ip
       alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
       alb.ingress.kubernetes.io/ssl-redirect: '443'
@@ -80,7 +84,7 @@ prometheus:
       alb.ingress.kubernetes.io/group.name: platform-admin-lb
       alb.ingress.kubernetes.io/inbound-cidrs: 68.195.155.202/32
       alb.ingress.kubernetes.io/scheme: internet-facing
-      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/655f7999-ceaf-4c25-91ae-0f18d4006906
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:742934034265:certificate/6cce1763-9f80-40b5-a8e0-73c7b8641396
       alb.ingress.kubernetes.io/target-type: ip
       alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
       alb.ingress.kubernetes.io/ssl-redirect: '443'

@@ -47,10 +47,10 @@ echo
 echo "==============================="
 echo "STEP-5: Create Jenkins using Terraform"
 echo "==============================="
-# cd "${ROOT}/05_jenkins"
-# terraform init --reconfigure
-# terraform apply --auto-approve
-# sleep 10
+cd "${ROOT}/05_jenkins"
+terraform init --reconfigure
+terraform apply --auto-approve
+sleep 10
 
 echo
 echo "==============================="
@@ -63,5 +63,5 @@ sleep 10
 
 echo
 echo "Done: 01_vpc → 02_route53_acm → 03_keys → 04_eks → 06_bastion."
-# echo "Jenkins URL / SSH: cd ${ROOT}/05_jenkins && terraform output"
+echo "Jenkins URL / SSH: cd ${ROOT}/05_jenkins && terraform output"
 echo "Bastion SSH:       cd ${ROOT}/06_bastion && terraform output -raw ssh_command"
